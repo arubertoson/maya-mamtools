@@ -3,9 +3,12 @@ from collections import defaultdict
 
 from PySide import QtGui, QtCore
 
+import maya.mel as mel
 import maya.cmds as cmds
+
 import maya.api.OpenMaya as api
-from maya.OpenMaya import MFn, MGlobal
+from maya.api.OpenMaya import MFn
+from maya.OpenMaya import MGlobal
 
 import mampy
 
@@ -363,5 +366,113 @@ class coplanar(mampy.DraggerCtx):
         self.default = self.value
 
 
+class fill(object):
+
+    SELECTION = None
+    DAGPATH = None
+    SCRIPT_JOB = None
+    WIRE_CULLING = None
+    MODEL_TOOLKIT = None
+    UVSET_NAME = 'mamtools_fill_uvset'
+    TOOLKIT_CTX_NAME = 'ModelingToolkitSuperCtx'
+    TOOLKIT_TGL_CMD = 'dR_mtkToolTGL'
+
+    def __init__(self):
+
+        self._slist = None
+        self._dagpath = None
+        self._culling = None
+        self._toolkit = None
+        self._scriptjob = None
+
+        self.setup()
+
+    @property
+    def slist(self):
+        if self._slist is None:
+            self._slist = mampy.selected()
+            if not self._slist and not self._slist.is_edge():
+                raise TypeError('Select a closed edge loop.')
+        return self._slist
+
+    @property
+    def dagpath(self):
+        if self._dagpath is None:
+            self._dagpath = self.slist.itercomps().next().dagpath
+        return self._dagpath
+
+    @property
+    def culling(self):
+        if self._culling is None:
+            self._culling = cmds.polyOptions(
+                self.dagpath, q=True, wireBackCulling=True
+                )
+        return self._culling
+
+    @property
+    def toolkit(self):
+        if self._toolkit is None:
+            self._toolkit = cmds.currentCtx(q=True) == self.TOOLKIT_CTX_NAME
+        return self._toolkit
+
+    def toggle_culling(self):
+        if self.culling:
+            cmds.polyOptions(self.dagpath, backCulling=True)
+
+    def toggle_toolkit(self):
+        if self.toolkit:
+            mel.eval(self.TOOLKIT_TGL_CMD)
+
+    def tear_down(self):
+        cmds.polySelectConstraint(disable=True)
+        cmds.polyUVSet(self.dagpath, delete=True, uvSet=self.UVSET_NAME)
+
+        if self.culling:
+            cmds.polyOptions(self.dagpath, wireBackCulling=True)
+
+        if self.toolkit:
+            mel.eval(self.TOOLKIT_TGL_CMD)
+
+        cmds.undoInfo(closeChunk=True)
+
+    def setup(self):
+        cmds.undoInfo(openChunk=True)
+        self.toggle_culling()
+        self.toggle_toolkit()
+
+        self._polygon_projection()
+        self._selection_mask()
+        self._script_job()
+
+    def _polygon_projection(self):
+        faces = mampy.MeshPolygon.create(self.dagpath)
+        faces = faces.get_complete()
+        cmds.polyProjection(
+            list(faces),
+            type='planar',
+            uvSetName=self.UVSET_NAME,
+            createNewMap=True,
+            mapDirection='c',
+            insertBeforeDeformers=True,
+            )
+        cmds.polyUVSet(self.dagpath, currentUVSet=True, uvSet=self.UVSET_NAME)
+        cmds.polyMapCut(list(self.slist))
+
+    def _selection_mask(self):
+        mask = mampy.get_active_mask()
+        mask.set_mode(mask.kSelectComponentMode)
+        mask.set_mask(mask.kSelectMeshFaces)
+        cmds.select(cl=True)
+        cmds.polySelectConstraint(type=0x0008, shell=True, m=1)
+
+    def _script_job(self):
+        if self._scriptjob is None:
+            self._scriptjob = cmds.scriptJob(
+                event=['SelectionChanged', self.tear_down],
+                runOnce=True,
+                )
+        return self._scriptjob
+
+
 if __name__ == '__main__':
-    coplanar.hilited()
+    fill()
