@@ -1,5 +1,5 @@
 import logging
-from collections import defaultdict
+import collections
 
 from PySide import QtGui, QtCore
 
@@ -192,13 +192,15 @@ class coplanar(mampy.DraggerCtx):
     @property
     def mesh_vectors(self):
         if self._mesh_vectors is None:
-            self._mesh_vectors = defaultdict(lambda: defaultdict(list))
+            self._mesh_vectors = collections.defaultdict(
+                 lambda: collections.defaultdict(list)
+                 )
         return self._mesh_vectors
 
     @property
     def comp_indices(self):
         if self._comp_indices is None:
-            self._comp_indices = defaultdict(set)
+            self._comp_indices = collections.defaultdict(set)
         return self._comp_indices
 
     @property
@@ -475,4 +477,4 @@ class fill(object):
 
 
 if __name__ == '__main__':
-    fill()
+    pass
