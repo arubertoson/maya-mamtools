@@ -84,8 +84,8 @@ def inbetweent():
     indices = [c.index for c in slist.itercomps()]
 
     if (comptype in [
-        MFn.kMeshPolygonComponent,
-        MFn.kMeshEdgeComponent,
+            MFn.kMeshPolygonComponent,
+            MFn.kMeshEdgeComponent,
             MFn.kMeshVertComponent]):
         # check if a edge ring can be selected.
         if (comptype == MFn.kMeshEdgeComponent and
@@ -256,9 +256,6 @@ class coplanar(mampy.DraggerCtx):
     def object(cls, context=False):
         return cls(cls.OBJECT, context)
 
-    def set_threshold(self, value):
-        optionvar['mamtools_coplanar_threshold'] = value
-
     def _setup_hilited(self):
         cmds.polySelectConstraint(
             type=0x0008,
@@ -370,11 +367,6 @@ class coplanar(mampy.DraggerCtx):
 
 class fill(object):
 
-    SELECTION = None
-    DAGPATH = None
-    SCRIPT_JOB = None
-    WIRE_CULLING = None
-    MODEL_TOOLKIT = None
     UVSET_NAME = 'mamtools_fill_uvset'
     TOOLKIT_CTX_NAME = 'ModelingToolkitSuperCtx'
     TOOLKIT_TGL_CMD = 'dR_mtkToolTGL'
