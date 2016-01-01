@@ -1,11 +1,12 @@
 import logging
 
 import maya.cmds as cmds
-from maya.api.OpenMaya import MFn
+import maya.api.OpenMaya as api
 
 import mampy
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 @mampy.history_chunk()
@@ -15,9 +16,9 @@ def extrude():
         cmds.select(list(comp))
         try:
             func = {
-                MFn.kMeshPolygonComponent: cmds.polyExtrudeFacet,
-                MFn.kMeshEdgeComponent: cmds.polyExtrudeEdge,
-                MFn.kMeshVertComponent: cmds.polyExtrudeVertex,
+                api.MFn.kMeshPolygonComponent: cmds.polyExtrudeFacet,
+                api.MFn.kMeshEdgeComponent: cmds.polyExtrudeEdge,
+                api.MFn.kMeshVertComponent: cmds.polyExtrudeVertex,
             }[comp.type]
             func(divisions=1)
         except KeyError:
@@ -37,6 +38,9 @@ def bevel():
 
 @mampy.history_chunk()
 def detach(extract=False):
+    """
+    Extracts or duplicat selected polygon faces.
+    """
     s = mampy.selected()
     if not s:
         return logger.warn('Nothing selected.')
@@ -71,5 +75,96 @@ def detach(extract=False):
     cmds.select(list(new), r=True)
 
 
+@mampy.history_chunk()
+def combine_separate():
+    """
+    Depending on selection will combine or separate objects.
+
+    Script will try to retain the transforms and outline position of the
+    first object selected.
+
+    """
+    def clean_up_object(dag):
+        """
+        Cleans up after `polyUnite` / `polySeparate`
+        """
+        dag.set_parent(parent)
+        trns = dag.get_transform()
+
+        cmds.reorder(dag.name, f=True)
+        cmds.reorder(dag.name, r=outliner_index)
+        trns.set_pivot(pivot)
+
+        dag.rotate.set(*src_trns.rotate)
+        dag.scale.set(*src_trns.scale)
+        return dag.name
+
+    s, hl = mampy.ls(sl=True, tr=True, l=True), mampy.ls(hl=True)
+    if len(s) == 0:
+        if len(hl) > 0:
+            s = hl
+        else:
+            return logger.warn('Nothing Selected.')
+
+    dag = s.pop(0)
+    logger.debug(dag)
+    parent = dag.get_parent()
+
+    # Get origin information from source object
+    trns = dag.get_transform()
+    src_trns = trns.get_transforms()
+    pivot = trns.get_rotate_pivot()
+
+    if s:
+        logger.debug('Combining Objects.')
+        for i in s.iterdags():
+            if dag.is_child_of(i):
+                raise mampy.InvalidSelection('Cannot parent an object to one '
+                                             'of its children')
+            if dag.is_parent_of(i):
+                continue
+            i.set_parent(dag)
+
+    # Now we can check source objects position in outliner and
+    # un-rotate/un-scale
+    outliner_index = get_outliner_index(dag)
+    dag.rotate.set(0, 0, 0)
+    dag.scale.set(1, 1, 1)
+
+    # Perform combine or separate and clean up objects and leftover nulls.
+    if s:
+        new_dag = mampy.DagNode(cmds.polyUnite(dag.name, list(s), ch=False)[0])
+        cmds.select(cmds.rename(clean_up_object(new_dag), dag.name), r=True)
+    else:
+        logger.debug('Separate Objects.')
+        new_dags = mampy.SelectionList(cmds.polySeparate(dag.name, ch=False))
+        for i in new_dags.copy().iterdags():
+            cmds.rename(clean_up_object(i), dag.name)
+        cmds.delete(dag.name)  # Delete leftover group.
+        cmds.select(list(new_dags), r=True)
+
+
+def get_outliner_index(dagnode):
+    """Return the current index of the given node in the outliner."""
+    if dagnode.is_root():
+        return mampy.ls(l=True, assemblies=True).index(dagnode.name)
+    else:
+        outliner = mampy.ls(dag=True, tr=True, l=True)
+        parent = dagnode.get_parent()
+        return outliner.index(dagnode.name) - outliner.index(parent.name)
+
+
 if __name__ == '__main__':
-    detach()
+    combine_separate()
+
+    # transform = dag.get_transform()
+    # r = transform.get_rotate()
+    # dag.rotate.set(0, 0, 0)
+
+
+    # get pivot position, save rotation and scale values.
+    # check for constraints in hierarchy and unparent.
+    # parent everything under the first and un-rotate/un-scale
+    # check incoming connections
+    # check for outgoing connections
+
