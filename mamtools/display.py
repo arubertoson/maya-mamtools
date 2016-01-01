@@ -1,6 +1,7 @@
 import logging
 
 import maya.cmds as cmds
+import maya.mel as mel
 from maya.api.OpenMaya import MFn
 
 import mampy
@@ -138,7 +139,7 @@ class SubDToggle(object):
     def _toggle(self):
         """Toggle specified meshes."""
         for mesh in self._meshes:
-            if self._state is None:
+            if self._state is None or self._state:
                 state = cmds.displaySmoothness(str(mesh), q=True, po=True).pop()
             else:
                 state = self._state
@@ -172,7 +173,7 @@ def isolate_selected():
     IsolateSelected.instance.toggle()
 
 
-def subd_toggle(all=False, hierarchy=True, off=False):
+def subd_toggle(all=False, hierarchy=True, off=None):
     """Toggle subd display on meshes."""
     if SubDToggle.instance is None:
         SubDToggle.instance = SubDToggle()
@@ -183,7 +184,7 @@ def subd_toggle(all=False, hierarchy=True, off=False):
         SubDToggle.instance.selected(hierarchy=hierarchy)
 
 
-def subd_level(level, all=True, hierarchy=True):
+def subd_level(level, all=False, hierarchy=True):
     """Change level of subd meshes."""
     if SubDToggle.instance is None:
         SubDToggle.instance = SubDToggle()
@@ -303,5 +304,63 @@ def wireframe_backface_culling():
         cmds.polyOptions(gl=True, backCulling=True)
 
 
+def view_outliner():
+    panel_window = 'outlinerPanel1Window'
+    if cmds.window(panel_window, q=True, exists=True):
+        cmds.deleteUI(panel_window, window=True)
+    else:
+        panel = cmds.getPanel(withLabel='Outliner')
+        cmds.outlinerPanel(panel, e=True, tearOff=True)
+
+
+def view_render():
+    panel_window = 'renderViewWindow'
+    if cmds.window(panel_window, q=True, exists=True):
+        cmds.deleteUI(panel_window, window=True)
+    else:
+        panel = cmds.getPanel(withLabel='Render View')
+        cmds.scriptedPanel(panel, e=True, tearOff=True)
+
+
+def view_script_editor():
+    panel_window = 'scriptEditorPanel1Window'
+    if cmds.window(panel_window, q=True, exists=True):
+        cmds.deleteUI(panel_window, window=True)
+    else:
+        cmds.scriptedPanel('scriptEditorPanel1', e=True, tearOff=True)
+
+
+def view_hypershader():
+    panel_window = 'hyperShadePanel1Window'
+    if cmds.window(panel_window, q=True, exists=True):
+        cmds.deleteUI(panel_window, window=True)
+    else:
+        panel = cmds.getPanel(withLabel='Hypershade')
+        cmds.scriptedPanel(panel, e=True, tearOff=True)
+
+
+def view_uv_editor():
+    panel_window = 'uvTextureEditor'
+    if cmds.window(panel_window, q=True, exists=True):
+        cmds.deleteUI(panel_window, window=True)
+    else:
+        mel.eval('NightshadeUVEditor')
+
+
+def view_namespace_editor():
+    panel_window = 'namespaceEditor'
+    if cmds.window(panel_window, q=True, exists=True):
+        cmds.deleteUI(panel_window, window=True)
+    else:
+        mel.eval(panel_window)
+
+
+def view_hypergraph():
+    mel.eval('HypergraphDGWindow')
+
+
+def view_node_editor():
+    mel.eval('NodeEditorWindow;')
+
 if __name__ == '__main__':
-    display_xray()
+    unhide_all()
