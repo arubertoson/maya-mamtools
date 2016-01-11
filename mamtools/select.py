@@ -16,9 +16,11 @@ optionvar = mampy.optionVar()
 logger = logging.getLogger(__name__)
 
 
-def adjacent():
+def adjacent(expand=True):
     """
     Grow and remove previous selection to get adjacent selection.
+
+    .. todo:: make contractable
     """
     slist = mampy.selected()
     components = list(slist.itercomps())
@@ -42,6 +44,17 @@ def adjacent():
     cmds.select(list(tglist), toggle=True)
 
 
+def traverse(expand=True, mode='normal'):
+    if mode == 'normal':
+        if expand:
+            return mel.eval('PolySelectTraverse(1)')
+        return mel.eval('PolySelectTraverse(2)')
+    elif mode == 'adjacent':
+        if expand:
+            return adjacent(expand)
+        return adjacent
+
+
 def clear():
     """
     Clear Selection.
@@ -57,6 +70,42 @@ def clear():
         mask.set_mode(mask.kSelectObjectMode)
         return
     cmds.select(clear=True)
+
+
+def clear_mesh_or_loop():
+    """
+    Don't know if useful.
+
+    .. note::
+        Might be redundant.
+    """
+    s = mampy.ls(preSelectHilite=True)[0]
+
+    if s.type == api.MFn.kEdgeComponent:
+        cmds.polySelect(s.dagpath, edgeLoop=s.index, d=True)
+    elif s.type == api.MFn.kMeshPolygonComponent:
+        cmds.polySelect(s.dagpath, extendToShell=s.index, d=True)
+
+
+def that_mesh():
+    s = mampy.ls(preSelectHilite=True)
+    if not s:
+        ouc = mampy.SelectionList()
+        obj = mampy.get_object_under_cursor()
+        if not ouc:
+            return logger.warn('No valid selection.')
+    else:
+        obj = s.pop()
+
+    if obj.type == api.MFn.kTransform:
+        shape = obj.get_shape()
+        if shape.type == api.MFn.kMesh:
+            mesh = obj.name
+    elif issubclass(obj.__class__, mampy.Component):
+        mesh = obj.dagpath
+
+    cmds.select(mesh, r=True)
+    cmds.hilite(mesh)
 
 
 def flood():
@@ -469,4 +518,4 @@ class fill(object):
 
 
 if __name__ == '__main__':
-    pass
+    that_mesh()
