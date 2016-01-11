@@ -101,7 +101,6 @@ class SubDToggle(object):
         """SubD toggle selected meshes."""
         self._hierarchy = hierarchy
         self._meshes = self.get_meshes(all=False)
-        print self._meshes
         self._toggle()
 
     def level(self, level=1, all=True, hierarchy=False):
@@ -139,11 +138,15 @@ class SubDToggle(object):
     def _toggle(self):
         """Toggle specified meshes."""
         for mesh in self._meshes:
-            if self._state is None or self._state:
-                state = cmds.displaySmoothness(str(mesh), q=True, po=True).pop()
-            else:
-                state = self._state
-            cmds.displaySmoothness(str(mesh), po=0 if state else 3)
+            try:
+                if self._state is None or self._state:
+                    state = cmds.displaySmoothness(str(mesh), q=True, po=True)
+                else:
+                    state = self._state
+
+                cmds.displaySmoothness(str(mesh), po=0 if state.pop() else 3)
+            except AttributeError:
+                logger.warn('{} is of type: {}'.format(mesh, type(mesh)))
 
 
 def is_model_panel(panel):
@@ -151,7 +154,9 @@ def is_model_panel(panel):
 
 
 def unhide_all(unhide_types=None):
-    """unhide all groups and mesh objects in the scene."""
+    """
+    unhide all groups and mesh objects in the scene.
+    """
     s = mampy.ls(transforms=True)
     for dag in s.iterdags():
         shape = dag.get_shape()
@@ -160,21 +165,27 @@ def unhide_all(unhide_types=None):
 
 
 def visibility_toggle():
-    """Toggle visibility of selected objects."""
+    """
+    Toggle visibility of selected objects.
+    """
     s = mampy.selected()
     for dag in s.iterdags():
         dag.visibility.set(not(dag.visibility.get()))
 
 
 def isolate_selected():
-    """Toggles isolate selected."""
+    """
+    Toggles isolate selected.
+    """
     if IsolateSelected.instance is None:
         IsolateSelected.instance = IsolateSelected()
     IsolateSelected.instance.toggle()
 
 
 def subd_toggle(all=False, hierarchy=True, off=None):
-    """Toggle subd display on meshes."""
+    """
+    Toggle subd display on meshes.
+    """
     if SubDToggle.instance is None:
         SubDToggle.instance = SubDToggle()
 
@@ -185,7 +196,9 @@ def subd_toggle(all=False, hierarchy=True, off=None):
 
 
 def subd_level(level, all=False, hierarchy=True):
-    """Change level of subd meshes."""
+    """
+    Change level of subd meshes.
+    """
     if SubDToggle.instance is None:
         SubDToggle.instance = SubDToggle()
 
@@ -246,7 +259,9 @@ def display_textures():
 
 
 def display_xray():
-    """Toggles xray on selected objects."""
+    """
+    Toggles xray on selected objects.
+    """
     s = mampy.selected()
     h = mampy.ls(hl=True, dag=True, type='mesh')
     if h: s.extend(h)
@@ -254,7 +269,6 @@ def display_xray():
     if not s:
         return logger.warn('Nothing selected.')
 
-    print s
     for dag in s.iterdags():
         shape = dag.get_shape()
         if shape is not None and shape.type == MFn.kMesh:
@@ -263,7 +277,9 @@ def display_xray():
 
 
 def wireframe_shaded_toggle():
-    """Toggles between wireframe and shaded on objects."""
+    """
+    Toggles between wireframe and shaded on objects.
+    """
     current_panel = cmds.getPanel(withFocus=True)
     if not is_model_panel(current_panel):
         return logger.warn('Panel must be modelPanel.')
@@ -276,7 +292,9 @@ def wireframe_shaded_toggle():
 
 
 def wireframe_on_shaded():
-    """Toggles shaded on wireframe, will be visible on background objects."""
+    """
+    Toggles shaded on wireframe, will be visible on background objects.
+    """
     current_panel = cmds.getPanel(withFocus=True)
     if not is_model_panel(current_panel):
         return logger.warn('Panel must be modelPanel.')
@@ -286,7 +304,9 @@ def wireframe_on_shaded():
 
 
 def wireframe_on_bg_objects():
-    """Toggles wireframe/shaded on background objects."""
+    """
+    Toggles wireframe/shaded on background objects.
+    """
     current_panel = cmds.getPanel(withFocus=True)
     if not is_model_panel(current_panel):
         return cmds.warning('Panel must be modelPanel')
@@ -296,7 +316,9 @@ def wireframe_on_bg_objects():
 
 
 def wireframe_backface_culling():
-    """Toggles backface culling on/off."""
+    """
+    Toggles backface culling on/off.
+    """
     is_wire_culling = cmds.polyOptions(gl=True, q=True, wireBackCulling=True)
     if not all(is_wire_culling):
         cmds.polyOptions(gl=True, wireBackCulling=True)
@@ -304,13 +326,68 @@ def wireframe_backface_culling():
         cmds.polyOptions(gl=True, backCulling=True)
 
 
-def view_outliner():
-    panel_window = 'outlinerPanel1Window'
-    if cmds.window(panel_window, q=True, exists=True):
-        cmds.deleteUI(panel_window, window=True)
+def view_outliner(floating=False):
+    """
+    Toggle the outliner on as a dock window to the right side of the viewport,
+    if floating is ture then toggle outliner to a floating window.
+
+    makes sure to delete the dockControl UI when visibility is lost to
+    ensure the name is available for maya.
+
+    .. old::
+        panel_window = 'outlinerPanel1Window'
+        if cmds.window(panel_window, q=True, exists=True):
+            cmds.deleteUI(panel_window, window=True)
+        else:
+            panel = cmds.getPanel(withLabel='Outliner')
+            cmds.outlinerPanel(panel, e=True, tearOff=True)
+    """
+    # Constants
+    TABLAYOUT = 'MAM_TAB_LAYOUT'
+    DOCK_CONTROL_OUTLINER = 'MAM_DOCK_CONTROL_OUTLINER'
+
+    if not cmds.paneLayout(TABLAYOUT, q=True, ex=True):
+        cmds.paneLayout(TABLAYOUT, p=mel.eval('$tmp = $gMainWindow'))
+
+    # Creat or show outliner.
+    if not cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, ex=True):
+        cmds.dockControl(
+            DOCK_CONTROL_OUTLINER,
+            label='Outliner',
+            width=280,
+            content=TABLAYOUT,
+            allowedArea=['left', 'right'],
+            area='right',
+            )
+
+    # Tear it off or dock it depending on floating arg.
+    vis_state = cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, vis=True)
+    fl_state = cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, fl=True)
+    cmds.dockControl(DOCK_CONTROL_OUTLINER, e=True, fl=floating)
+    if (vis_state and not fl_state == floating):
+        pass
     else:
-        panel = cmds.getPanel(withLabel='Outliner')
-        cmds.outlinerPanel(panel, e=True, tearOff=True)
+        cmds.dockControl(
+            DOCK_CONTROL_OUTLINER,
+            e=True,
+            vis=not(cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, vis=True)),
+            )
+
+    if not cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, vis=True):
+        try:
+            cmds.deleteUI(DOCK_CONTROL_OUTLINER)
+        except RuntimeError:
+            pass
+    else:
+        # Create outliner pane under tablayout if it's not there.
+        outliner_window = 'outlinerPanel1Window'
+        if not cmds.control(outliner_window, q=True, ex=True):
+            panel = cmds.getPanel(withLabel='Outliner')
+            cmds.outlinerPanel(panel, e=True, p=TABLAYOUT)
+            # cmds.control(outliner_window, e=True, p=TABLAYOUT)
+
+    if floating:
+        cmds.dockControl(DOCK_CONTROL_OUTLINER, e=True, height=600)
 
 
 def view_render():
@@ -363,4 +440,4 @@ def view_node_editor():
     mel.eval('NodeEditorWindow;')
 
 if __name__ == '__main__':
-    unhide_all()
+    view_outliner()
