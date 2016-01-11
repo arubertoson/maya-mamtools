@@ -6,11 +6,11 @@ import maya.api.OpenMaya as api
 import mampy
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 @mampy.history_chunk()
-def extrude():
+def bevel():
     s = mampy.selected()
     for comp in s.itercomps():
         cmds.select(list(comp))
@@ -37,7 +37,7 @@ def bevel():
 
 
 @mampy.history_chunk()
-def detach(extract=False):
+def detach_mesh(extract=False):
     """
     Extracts or duplicat selected polygon faces.
     """
@@ -75,6 +75,17 @@ def detach(extract=False):
     cmds.select(list(new), r=True)
 
 
+def detach(hierarchy=False, extract=False):
+    s = mampy.selected()
+    if not s:
+        return logger.warn('Nothing Selected.')
+    s = s[0]
+    if s.type == api.MFn.kMeshPolygonComponent:
+        detach_mesh(extract)
+    elif s.type in [api.MFn.kTransform]:
+        cmds.duplicate(rr=True) #parentOnly=hierarchy)
+
+
 @mampy.history_chunk()
 def combine_separate():
     """
@@ -88,7 +99,8 @@ def combine_separate():
         """
         Cleans up after `polyUnite` / `polySeparate`
         """
-        dag.set_parent(parent)
+        if dag.get_parent() is not None:
+            dag.set_parent(parent)
         trns = dag.get_transform()
 
         cmds.reorder(dag.name, f=True)
@@ -99,14 +111,14 @@ def combine_separate():
         dag.scale.set(*src_trns.scale)
         return dag.name
 
-    s, hl = mampy.ls(sl=True, tr=True, l=True), mampy.ls(hl=True)
+    s, hl = mampy.ordered_selection(tr=True, l=True), mampy.ls(hl=True)
     if len(s) == 0:
         if len(hl) > 0:
             s = hl
         else:
             return logger.warn('Nothing Selected.')
 
-    dag = s.pop(0)
+    dag = s.pop()
     logger.debug(dag)
     parent = dag.get_parent()
 
@@ -127,7 +139,7 @@ def combine_separate():
 
     # Now we can check source objects position in outliner and
     # un-rotate/un-scale
-    outliner_index = get_outliner_index(dag)
+    outliner_index = mampy.get_outliner_index(dag)
     dag.rotate.set(0, 0, 0)
     dag.scale.set(1, 1, 1)
 
@@ -144,18 +156,10 @@ def combine_separate():
         cmds.select(list(new_dags), r=True)
 
 
-def get_outliner_index(dagnode):
-    """Return the current index of the given node in the outliner."""
-    if dagnode.is_root():
-        return mampy.ls(l=True, assemblies=True).index(dagnode.name)
-    else:
-        outliner = mampy.ls(dag=True, tr=True, l=True)
-        parent = dagnode.get_parent()
-        return outliner.index(dagnode.name) - outliner.index(parent.name)
-
-
 if __name__ == '__main__':
-    combine_separate()
+    detatch()
+    # dag = mampy.selected().pop(0)
+    # print cmds.parent(dag.name, world=True)
 
     # transform = dag.get_transform()
     # r = transform.get_rotate()

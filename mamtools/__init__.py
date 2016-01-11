@@ -19,7 +19,7 @@ __author__ = "Marcus Albertsson"
 __email__ = "marcus.arubertoson@gmail.com"
 __url__ = "http://github.com/arubertoson/mamtools"
 __version__ = "0.1"
-__license__ = "MIT"
+__license__ = "GNU"
 __description__ = "A toolbox containing various improvements to Maya worflows."
 __copyright__ = 'Copyright 2015 Marcus Albertsson'
 

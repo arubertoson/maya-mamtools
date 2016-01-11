@@ -176,3 +176,8 @@ class WalkPattern(collections.Sequence):
 
     def update(self):
         return self.__class__()
+
+
+if __name__ == '__main__':
+    ws = WalkSelection()
+    cmds.select(ws.pattern)

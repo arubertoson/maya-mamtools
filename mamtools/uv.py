@@ -219,7 +219,7 @@ class AlignUV(object):
         return self._shell_sum
 
 
-@mampy.history_chunk()
+# @mampy.history_chunk()
 def align(mode):
     """Aligns uvs given mode."""
     try:
@@ -325,7 +325,9 @@ def space(mode, space=0.04):
 
 @mampy.history_chunk()
 def tear_off():
-    """Docstring."""
+    """
+    Creates a new uv shell from selected faces.
+    """
     s = mampy.selected()
 
     for comp in s.itercomps():
@@ -338,7 +340,9 @@ def tear_off():
 
 
 def get_angle(pointA, pointB):
-    """Docstring"""
+    """
+    Calculates the angle between two points.
+    """
 
     if pointA.x >= pointB.x:
         distX = (pointA.x - pointB.x)
@@ -367,7 +371,9 @@ def get_angle(pointA, pointB):
 
 
 class Line2D(object):
-    """Docstring"""
+    """
+    Line2D class is the line between two points.
+    """
 
     def __init__(self, pointA, pointB):
 
@@ -404,8 +410,10 @@ class Line2D(object):
 
 
 def orient():
-    """Docstring"""
-    s = mampy.selected()
+    """
+    Orients shell to closest 90 degree angle on selection.
+    """
+    s = mampy.ordered_selection(fl=True)
     if not s:
         return logger.warn('Nothing selected.')
 
@@ -450,4 +458,19 @@ def mirror(mode):
 
 
 if __name__ == '__main__':
-    rotate(90)
+    set_texel_density(True, 10240.0)
+    # print get_texel_density()
+    # s = mampy.selected()
+    # for i in s.itercomps():
+        # print i._indexed.isComplete
+
+    # for i in [UV3DArea(c) for c in s.itercomps()]:
+        # print i.ratio
+    # n = 15125.0590486 # get_texel_density()
+    # set_texel_density(target_density=n)
+
+    # mirror('u')
+    # orient()
+    # align('maxv')
+    # distribute('u')
+    # scalefit('maxv')
