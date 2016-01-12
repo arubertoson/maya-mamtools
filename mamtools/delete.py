@@ -98,29 +98,6 @@ def merge_verts(move):
     cmds.polyMergeVertex(list(s), distance=0.001, ch=True)
 
 
-def merge():
-    """
-    Dispatches function call depending on selection type
-    """
-    s = mampy.selected()
-    if not s:
-        logger.warn('Nothing Selected.')
-
-    obj = s[0]
-    t = obj.type
-    if obj.type in [api.MFn.kTransform]:
-        t = obj.get_shape().type
-
-    try:
-        {
-            api.MFn.kMeshVertComponent: partial(merge_verts, True),
-            api.MFn.kMeshPolygonComponent: merge_faces,
-            api.MFn.kMesh: mamtools.mesh.combine_separate,
-        }[t]()
-    except KeyError:
-        logger.warn('{} is not a valid type'.format(t))
-
-
 def transforms(translate=False, rotate=False, scale=False):
     """Small function to control transform freezes."""
     s, h = mampy.selected(tr=True, l=True), mampy.ls(hl=True, dag=True)
