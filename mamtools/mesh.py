@@ -269,5 +269,20 @@ def unbevel():
     cmds.select(cl=True)
 
 
+@mampy.history_chunk()
+def spin_edge():
+    """
+    Spin all selected edges.
+
+    Allows us to spin edges within a face selection.
+    """
+    s = mampy.selected()
+    for comp in s.itercomps():
+        edge = comp.to_edge(internal=True)
+        cmds.polySpinEdge(list(edge), offset=-1, ch=False)
+    cmds.select(cl=True); cmds.select(list(s), r=True)
+
+
 if __name__ == '__main__':
-    unbevel()
+    spin_edge()
+
