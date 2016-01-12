@@ -1,4 +1,6 @@
+import sys
 import logging
+import collections
 
 import maya.cmds as cmds
 import maya.api.OpenMaya as api
@@ -7,6 +9,9 @@ import mampy
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+
+EPS = sys.float_info.epsilon
 
 
 @mampy.history_chunk()
@@ -73,17 +78,6 @@ def detach_mesh(extract=False):
         new.append(dcomp.get_complete())
 
     cmds.select(list(new), r=True)
-
-
-def detach(hierarchy=False, extract=False):
-    s = mampy.selected()
-    if not s:
-        return logger.warn('Nothing Selected.')
-    s = s[0]
-    if s.type == api.MFn.kMeshPolygonComponent:
-        detach_mesh(extract)
-    elif s.type in [api.MFn.kTransform]:
-        cmds.duplicate(rr=True) #parentOnly=hierarchy)
 
 
 @mampy.history_chunk()
@@ -156,19 +150,124 @@ def combine_separate():
         cmds.select(list(new_dags), r=True)
 
 
+@mampy.history_chunk()
+def unbevel():
+    """
+    Unbevel beveled edges.
+
+    Select Edges along a bevel you want to unbevel. Make sure the edge is not
+    connected to another edge from another bevel. This will cause the script
+    to get confused.
+    """
+    def get_object_edge_indices_map():
+        """
+        Map selected verts to mesh dagpath.
+        """
+        obj_edge_indices = collections.defaultdict(set)
+        for comp in s.itercomps():
+            verts = comp.to_vert()
+            obj_edge_indices[str(comp.dagpath)].add(tuple(verts.indices))
+        return obj_edge_indices
+
+    def get_edge_loop_from_indices(indices):
+        """
+        Loop through given indices and check if they are connected. Maps
+        connected indices and returns a dict.
+        """
+        def is_ids_in_loop(ids):
+            """
+            Check if id is connected to any indices currently in
+            loops[loop_count] key.
+            """
+            id1, id2 = ids
+            for edge in loops[loop_count]:
+                if id1 in edge or id2 in edge:
+                    return True
+            return False
+
+        loop_count = 0
+        loops = collections.defaultdict(set)
+        while indices:
+
+            loop_count += 1
+            loops[loop_count].add(indices.pop())
+
+            loop_growing = True
+            while True:
+                if loop_growing:
+                    loop_growing = False
+                else:
+                    break
+
+                for ids in indices.copy():
+                    if is_ids_in_loop(ids):
+                        loop_growing = True
+                        loops[loop_count].add(ids); indices.remove(ids)
+        return loops
+
+    def get_outer_and_inner_edges(connected_edges):
+        """
+        Sort the connected_edges in outer and inner edges.
+        """
+        vert_count = collections.Counter()
+        for edge in loop:
+            vert_count.update(edge)
+
+        outer_edges = []
+        for uncommon in vert_count.most_common()[-2:]:
+
+            # Get outer edge vert pair
+            outer_vert = uncommon[0]
+            outer_edge = [e for e in connected_edges if outer_vert in e].pop()
+            inner_vert = [idx for idx in outer_edge if not idx == outer_vert].pop()
+
+            outer_vert = mampy.MeshVert.create(dag).add(outer_vert)
+            inner_vert = mampy.MeshVert.create(dag).add(inner_vert)
+
+            # Remove outer edges, they will not be moved.
+            connected_edges.remove(outer_edge)
+            outer_edges.append((outer_vert, inner_vert))
+        return outer_edges, connected_edges
+
+    # Collect data
+    s = mampy.ls(sl=True, fl=True)
+    obj_edge_indices = get_object_edge_indices_map()
+    obj_loops = {
+        obj: get_edge_loop_from_indices(indices)
+        for obj, indices in obj_edge_indices.iteritems()
+        }
+
+    # perform unbevel
+    for dag, loops in obj_loops.iteritems():
+        cmds.select(dag, r=True)
+
+        merge_list = mampy.SelectionList()
+        for loop in loops.itervalues():
+            outer_edges, inner_edges = get_outer_and_inner_edges(loop)
+
+            # Place verts that will be moved in selection list. Mergin verts
+            # while looping will change the index list of the object.
+            verts_to_move = mampy.MeshVert.create(dag)
+            verts_to_move.add(set([idx for edge in inner_edges for idx in edge]))
+            merge_list.append(verts_to_move)
+
+            # Get intersection line.
+            edge1, edge2 = outer_edges
+            line1 = mampy.Line3D(edge1[0].points[0], edge1[1].points[0])
+            line2 = mampy.Line3D(edge2[0].points[0], edge2[1].points[0])
+            intersection_line = line1.shortest_line_to_other(line2)
+
+            # collapse verts
+            verts_to_move.translate(t=intersection_line.sum() * 0.5, ws=True)
+
+        # Merge points on object after operation
+        cmds.polyMergeVertex(list(merge_list), distance=0.001, ch=False)
+
+    # Restore selection
+    cmds.selectMode(component=True)
+    cmds.hilite(list(obj_loops), r=True)
+    cmds.select(cl=True)
+
+
 if __name__ == '__main__':
-    detatch()
-    # dag = mampy.selected().pop(0)
-    # print cmds.parent(dag.name, world=True)
-
-    # transform = dag.get_transform()
-    # r = transform.get_rotate()
-    # dag.rotate.set(0, 0, 0)
-
-
-    # get pivot position, save rotation and scale values.
-    # check for constraints in hierarchy and unparent.
-    # parent everything under the first and un-rotate/un-scale
-    # check incoming connections
-    # check for outgoing connections
-
+    unbevel()

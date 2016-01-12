@@ -24,4 +24,6 @@ __description__ = "A toolbox containing various improvements to Maya worflows."
 __copyright__ = 'Copyright 2015 Marcus Albertsson'
 
 
+
 from mamtools import (select, mesh, camera, display, delete, uv, utils)
+from mamtools.api import *
