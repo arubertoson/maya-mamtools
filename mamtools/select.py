@@ -1,3 +1,4 @@
+import sys
 import logging
 import collections
 
@@ -11,6 +12,7 @@ from maya.api.OpenMaya import MFn
 from maya.OpenMaya import MGlobal
 
 import mampy
+from mamtools.utils import select_mode
 
 optionvar = mampy.optionVar()
 logger = logging.getLogger(__name__)
@@ -203,6 +205,28 @@ def invert(shell=False):
 
     # for some reason the tgl keyword makes cmds.select really fast.
     cmds.select(list(t), tgl=True)
+
+
+def nonquads(type_='ngons', query=False):
+    """
+    Select all nonquads from an object.
+    """
+    type_ = 3 if type_ == 'ngons' else 1
+
+    if query:
+        selected = mampy.selected()
+
+    cmds.selectMode(component=True)
+    cmds.selectType(facet=True)
+
+    cmds.polySelectConstraint(mode=3, t=0x0008, size=type_)
+    cmds.polySelectConstraint(disable=True)
+    ngons = mampy.selected()
+
+    if query:
+        cmds.select(list(selected))
+        return ngons
+    sys.stdout.write(str(len(ngons)) + ' N-Gon(s) Selected.\n')
 
 
 class coplanar(mampy.DraggerCtx):
@@ -518,4 +542,4 @@ class fill(object):
 
 
 if __name__ == '__main__':
-    pass
+    nonquads('ngons')
