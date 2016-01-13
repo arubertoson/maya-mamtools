@@ -1,4 +1,5 @@
 import sys
+import math
 import logging
 import collections
 
@@ -150,6 +151,44 @@ def combine_separate():
         cmds.select(list(new_dags), r=True)
 
 
+def flatten(averaged=True):
+    """
+    Flattens selection by averaged normal.
+    """
+    def flatten(vector):
+        # Setup
+        cmds.select(list(s))
+        comp = s.itercomps().next()
+
+        # Perform scale
+        cmds.manipScaleContext('Scale', e=True, mode=6, alignAlong=vector)
+        radians = cmds.manipScaleContext('Scale', q=True, orientAxes=True)
+        t = [math.degrees(r) for r in radians]
+        cmds.scale(0, 1, 1, r=True, oa=t, p=list(comp.bounding_box.center)[:3])
+
+    def script_job():
+        """
+        Get normal from script job selection and pass it to flatten.
+        """
+        driver = mampy.selected()
+        for comp in driver.itercomps():
+            vector = comp.get_normal(comp.index).normalize()
+        flatten(vector)
+
+    s = mampy.selected()
+    if averaged:
+        # Get average normal and scale selection to zero
+        for comp in s.itercomps():
+            average_vector = api.MFloatVector()
+            for idx in comp.indices:
+                average_vector += comp.get_normal(idx)
+            average_vector /= len(comp.indices)
+        flatten(average_vector)
+    else:
+        # Scale selection to given selection.
+        cmds.scriptJob(event=['SelectionChanged', script_job], runOnce=True)
+
+
 @mampy.history_chunk()
 def unbevel():
     """
@@ -284,5 +323,4 @@ def spin_edge():
 
 
 if __name__ == '__main__':
-    spin_edge()
-
+    flatten(False)
