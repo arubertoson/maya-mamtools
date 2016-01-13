@@ -95,7 +95,7 @@ def get_global_var(var):
     return mel.eval('$mampytmp = ${}'.format(var))
 
 
-def select_mode(type_):
+def select_mode(type_, toggle=True):
     """
     Selection mode setter, given component or objects set Maya selection
     masks.
@@ -123,7 +123,7 @@ def select_mode(type_):
     meshuv = {
         'polymeshUV': True,
         'surfaceUV': True,
-    }
+        }
     kwargs = locals()[type_]
     mode = trim_dict()
     if (cmds.selectMode(q=True, component=True) and
@@ -144,12 +144,12 @@ def convert(mode, **args):
     for i in s.itercomps():
         if mode == 'vert':
             cl.append(i.to_vert(**args))
-        # elif mode == 'edge':
-        #     cl.append(i.to_edge(**args))
-        # elif mode == 'face':
-        #     cl.append(i.to_face(**args))
-        # elif mode == 'meshuv':
-        #     cl.append(i.to_map(**args))
+        elif mode == 'edge':
+            cl.append(i.to_edge(**args))
+        elif mode == 'face':
+            cl.append(i.to_face(**args))
+        elif mode == 'meshuv':
+            cl.append(i.to_map(**args))
 
     select_mode(mode)
     cmds.select(list(cl))
