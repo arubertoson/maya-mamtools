@@ -392,8 +392,7 @@ class Line2D(object):
         return '{pointA}, {pointB}'.format(**self.__dict__)
 
     def __iter__(self):
-        for point in (self.pointA, self.pointB):
-            yield point
+        return iter(self.pointA, self.pointB)
 
     @property
     def angle(self):
