@@ -238,17 +238,162 @@ def spin_edge():
     cmds.select(cl=True); cmds.select(list(s), r=True)
 
 
+def get_vert_order_on_edge_row(indices):
+    """
+    """
+    idx = 0
+    next_ = None
+    sorted_ = []
+    while indices:
+
+        edge = indices.pop(idx)
+        if next_ is None:
+            next_ = edge[-1]
+
+        sorted_.append(next_)
+        for i in indices:
+            if next_ in i:
+                idx = indices.index(i)
+                next_ = i[-1] if next_ == i[0] else i[0]
+                break
+
+    return sorted_
+
+
+def make_circle(mode=0):
+    """
+    Make circle from selection.
+
+    .. note:: This is pretty broken still, will need a rehaul when opertunity
+    is given.
+    """
+    import collections
+    s = mampy.selected()
+    for comp in s.itercomps():
+
+        connected = mampy.get_connected_components_in_comp(comp)
+        for con in connected:
+            edges = con.to_edge(border=True)
+            indices = [edges.mesh.getEdgeVertices(i) for i in edges.indices]
+            vert_row = get_vert_order_on_edge_row(indices)
+            vert_row = [
+                mampy.MeshVert.create(con.dagpath).add(i) for i in vert_row
+                ]
+            cen_point = con.bounding_box.center
+
+            # Get average Normal
+            avg_normal = api.MFloatVector()
+            for i in con.indices:
+                avg_normal += con.get_normal(i).normal()
+            avg_normal = api.MVector(avg_normal / len(con))
+
+            # # Get Plane
+            # proj_normal = avg_normal.normal()
+            # dist = [(vert.points[0]-cen_point).length() for vert in vert_row]
+            # radius = sum(dist) / len(vert_row)
+
+            # Sorting help
+            angle = []
+            for i, vert in enumerate(vert_row):
+                try:
+                    vec1 = vert.points[0] - cen_point
+                    vec2 = vert_row[i+1].points[0] - cen_point
+                except IndexError:
+                    pass
+
+                angle1 = math.degrees(math.atan2(vec1.x, vec1.y))
+                angle2 = math.degrees(math.atan2(vec2.x, vec2.y))
+
+                if angle2 > 90 and angle1 < -90:
+                    angle1 += 360
+                elif angle1 > 90 and angle2 < -90:
+                    angle2 += 360
+
+                angle_sum = angle2 - angle1
+                if angle_sum < -180:
+                    angle_sum += 180
+
+                print angle_sum
+
+                angle.append(angle_sum)
+
+            if sum(angle) > 0:
+                vert_row.reverse()
+
+            dpsum = 0
+            first_vert = None
+            greatest_dpsum = -999999999.999999999
+            vert_deque = collections.deque(vert_row)
+            for x in xrange(len(vert_deque)):
+                vert_deque.append(vert_deque[0])
+
+                dpsum = 0
+                for i, vert in enumerate(vert_deque):
+                    radian = math.radians((360/(len(vert_deque)-1)) * i)
+
+                    angle_matrix = api.MMatrix((
+                        [math.cos(radian), -math.sin(radian), 0, 0],
+                        [math.sin(radian), math.cos(radian), 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, 1],
+                    ))
+                    rot_vec = api.MVector(vert.points[0] * angle_matrix)
+                    dpsum += api.MVector(vert.points[0]) * rot_vec
+
+                print 'dpsum', dpsum
+                if dpsum > greatest_dpsum:
+                    first_vert, greatest_dpsum = vert_deque[0], dpsum
+
+                vert_deque.pop()
+                vert_deque.rotate(1)
+
+            # Rotate
+            for x in xrange(len(vert_deque)):
+                if vert_deque[x] == first_vert:
+                    break
+                vert_deque.rotate()
+
+            # Radius average
+            # avg_radius = 0
+            # for x, vert in enumerate(vert_deque):
+            #     avg_radius += (vert.points[0]-vert_deque[x-1].points[0]).length()
+            # avg_radius /= (math.pi*2)
+
+            # Perform
+            if mode == 0:
+                # Equal
+                base_point = vert_deque[0].points[0]
+                # base_vector = (base_point - cen_point).normal()
+                base_vector = base_point - cen_point
+
+                degeree_span = 360/len(vert_deque)
+
+                for i, vert in enumerate(vert_deque):
+
+                    rad_span = math.radians(degeree_span*i)
+                    rot_vector = base_vector.rotateBy(
+                        api.MQuaternion(rad_span, avg_normal)
+                    )
+                    trans = api.MVector(cen_point + rot_vector)
+                    vert.translate(t=trans, ws=True)
+
+            elif mode == 1:
+                # Closest
+                for vert in vert_deque:
+                    unit_vector = (vert.points[0] - cen_point).normal()
+                    angle_a = math.degrees(avg_normal.angle(unit_vector))
+                    angle_b = 90 - angle_a
+                    length = math.sin(math.radians(angle_b))
+
+                    print length
+                    cb = length * avg_normal
+                    ac = unit_vector - cb
+                    dist = ac.length()
+                    ac = ac * (radius/dist)
+                    ac = api.MVector(cen_point + ac)
+
+                    vert.translate(t=ac, ws=True)
+
+
 if __name__ == '__main__':
-    unbevel()
-
-
-
-    # s = mampy.selected()
-    # for comp in s.itercomps():
-
-    #     # cmds.select(str(comp.dagpath), r=True)
-    #     # merge_list = mampy.SelectionList()
-
-    #     for c in mampy.get_connected_components_in_comp(comp):
-    #         outer_edges, rest = get_outer_edges_in_loop(c)
-
+    make_circle(1)
