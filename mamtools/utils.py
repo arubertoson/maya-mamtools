@@ -136,22 +136,33 @@ def select_mode(type_, toggle=True):
         cmds.selectType(**kwargs)
 
 
-def convert(mode, **args):
+def convert(comptype, **kwargs):
     """
-    Convert current selection to given mode.
+    Convert current selection to given comptype.
     """
-    s, cl = mampy.selected(), mampy.SelectionList()
-    for i in s.itercomps():
-        if mode == 'vert':
-            cl.append(i.to_vert(**args))
-        elif mode == 'edge':
-            cl.append(i.to_edge(**args))
-        elif mode == 'face':
-            cl.append(i.to_face(**args))
-        elif mode == 'meshuv':
-            cl.append(i.to_map(**args))
+    mode = {
+        'vert': (api.MFn.kMeshVertComponent, 'to_vert'),
+        'edge': (api.MFn.kMeshEdgeComponent, 'to_edge'),
+        'face': (api.MFn.kMeshPolygonComponent, 'to_face'),
+        'map': (api.MFn.kMeshMapComponent, 'to_map'),
+    }[comptype]
 
-    select_mode(mode)
+    s, cl = mampy.selected(), mampy.SelectionList()
+    if not s:
+        return logger.warn('Nothing Selected.')
+
+    for comp in s.itercomps():
+        if comp.type == mode[0]:
+            return
+        # Special case for vert -> edge
+        elif ('border' not in kwargs and
+                comp.type == api.MFn.kMeshVertComponent and
+                mode[0] == api.MFn.kMeshEdgeComponent):
+            kwargs.update({'internal': True})
+
+        cl.append(getattr(comp, mode[1])(**kwargs))
+
+    select_mode(comptype if not comptype == 'map' else 'meshuv')
     cmds.select(list(cl))
 
 
@@ -221,46 +232,17 @@ def bake_pivot():
     cmds.select(list(s), r=True); cmds.select(dag.name, add=True)
 
 
+def get_pane_size(pane):
+    """
+    Return pane size of given pane.
+    """
+    return [cmds.control(pane, q=True, **{p: True}) for p in ['w', 'h']]
+
 if __name__ == '__main__':
-    pass
 
-# def getViewSize():
-#     '''
-#     Gets the size of the pane under the cursor and retruns
-#     it as a array index 0 is x axis and index 1 is y axis
-#     '''
-#     viewPanel = cmds.getPanel(underPointer=True)
-#     size = [0, 0]
-#     size[0] = cmds.control(viewPanel, q=True, w=True)
-#     size[1] = cmds.control(viewPanel, q=True, h=True)
-#     return size
+    print get_pane_size(cmds.getPanel(underPointer=True))
 
-# def polyChamferVtx(doHist=True, width=0.5, deleteFace=False):
-#     '''
-#     Recreation of the polyChamferVtx from mel
-#     performs a vertex extrude, than locks the length and division values and deletes the vtx
-#     to emulate a vertex chamfer
 
-#     Args:
-#         dohist(boolean): create history or not
-#         width(float): the width of the vertex chamfer
-#         deleteFace(boolean): delete result face or not.
-
-#     Returns:
-#         node(string): the resulting node
-#     '''
-#     result = cmds.polyExtrudeVertex(ch=doHist, length=0, divisions=1, width=width)
-#     if len(result) > 0:
-#         node = [None]
-#         cmds.setAttr(result[0] + '.divisions', lock=True)
-#         cmds.setAttr(result[0] + '.length', lock=True)
-#         node[0] = cmds.rename(result, 'polyChamfer#')
-#     if deleteFace == 1:
-#         getFaces()
-#         cmds.delete()
-#     else:
-#         cmds.DeleteVertex()
-#     return node
 
 # def uvShellHardEdges():
 #     '''
