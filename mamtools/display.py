@@ -390,6 +390,80 @@ def view_outliner(floating=False):
         cmds.dockControl(DOCK_CONTROL_OUTLINER, e=True, height=600)
 
 
+def view_script_editor(direction='bottom', floating=False):
+    """
+    Toggle the script output as a dock window to the given side of the
+    viewport, if floating is true then toggle outliner to a floating window.
+
+    makes sure to delete the dockControl UI when visibility is lost to
+    ensure the name is available for maya.
+    """
+    def context_menu():
+        """
+        Create context menu for output window.
+        """
+        # context menu
+        output_win = cmds.cmdScrollFieldReporter(fst="")
+        cmds.popupMenu(parent=output_win)
+        cmds.menuItem(
+            label='Clear Output',
+            command=lambda c: cmds.cmdScrollFieldReporter(
+                output_win, e=True, clear=True),
+        )
+        # Echo all commands toggle
+        cmds.menuItem(
+            label='Toggle Echo Commands',
+            command=lambda c: cmds.commandEcho(
+                state=not(cmds.commandEcho(q=True, state=True))),
+        )
+        # Go to python reference
+        cmds.menuItem(
+            label='Python Command Reference',
+            command=lambda c: cmds.showHelp('DocsPythonCommands'),
+        )
+
+    def create_script_output():
+        """
+        Create the dock window.
+        """
+        if cmds.window(SCRIPT_OUTPUT_WINDOW, ex=True):
+            main_win = SCRIPT_OUTPUT_WINDOW
+        else:
+            main_win = cmds.window(SCRIPT_OUTPUT_WINDOW, title='Output Window')
+
+        cmds.paneLayout(parent=main_win)
+        context_menu()
+
+        cmds.dockControl(
+            SCRIPT_OUTPUT_DOCK,
+            content=main_win,
+            label='Output Window',
+            area=direction,
+            # height=500,
+            floating=False,
+            allowedArea=['bottom']
+            )
+
+
+    # Constants
+    SCRIPT_OUTPUT_WINDOW = 'MAM_SCRIPT_OUTPUT_WINDOW'
+    SCRIPT_OUTPUT_DOCK = 'MAM_SCRIPT_OUTPUT_DOCK'
+    SCRIPT_EDITOR_WINDOW = 'scriptEditorPanel1Window'
+    SCRIPT_EDITOR_PANE = 'scriptEditorPanel1'
+
+    if not floating:
+        if not cmds.dockControl(SCRIPT_OUTPUT_DOCK, ex=True):
+            create_script_output()
+        else:
+            state = not(cmds.dockControl(SCRIPT_OUTPUT_DOCK, q=True, vis=True))
+            cmds.dockControl(SCRIPT_OUTPUT_DOCK, e=True, vis=state)
+    elif floating:
+        if cmds.window(SCRIPT_EDITOR_WINDOW, q=True, exists=True):
+            cmds.deleteUI(SCRIPT_EDITOR_WINDOW, window=True)
+        else:
+            cmds.scriptedPanel(SCRIPT_EDITOR_PANE, e=True, tearOff=True)
+
+
 def view_render():
     panel_window = 'renderViewWindow'
     if cmds.window(panel_window, q=True, exists=True):
@@ -397,14 +471,6 @@ def view_render():
     else:
         panel = cmds.getPanel(withLabel='Render View')
         cmds.scriptedPanel(panel, e=True, tearOff=True)
-
-
-def view_script_editor():
-    panel_window = 'scriptEditorPanel1Window'
-    if cmds.window(panel_window, q=True, exists=True):
-        cmds.deleteUI(panel_window, window=True)
-    else:
-        cmds.scriptedPanel('scriptEditorPanel1', e=True, tearOff=True)
 
 
 def view_hypershader():
@@ -440,4 +506,4 @@ def view_node_editor():
     mel.eval('NodeEditorWindow;')
 
 if __name__ == '__main__':
-    view_outliner()
+    view_script_editor(floating=True)
