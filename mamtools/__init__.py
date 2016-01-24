@@ -16,5 +16,6 @@ __version__ = "0.4.0"
 __license__ = "MIT"
 
 
-from mamtools import (select, mesh, camera, display, delete, uv, utils)
+from mamtools import (select, mesh, camera, display, delete, uv, utils,
+                      contexts)
 from mamtools.api import *
