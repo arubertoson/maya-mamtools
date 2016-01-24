@@ -95,7 +95,14 @@ def get_global_var(var):
     return mel.eval('$mampytmp = ${}'.format(var))
 
 
-def select_mode(type_, toggle=True):
+def select_mode_toggle():
+    if cmds.selectMode(q=True, component=True):
+        cmds.selectMode(object=True)
+    else:
+        cmds.selectMode(component=True)
+
+
+def select_mode(type_):
     """
     Selection mode setter, given component or objects set Maya selection
     masks.
@@ -239,8 +246,8 @@ def get_pane_size(pane):
     return [cmds.control(pane, q=True, **{p: True}) for p in ['w', 'h']]
 
 if __name__ == '__main__':
-
-    print get_pane_size(cmds.getPanel(underPointer=True))
+    select_mode_toggle()
+    # print get_pane_size(cmds.getPanel(underPointer=True))
 
 
 
