@@ -36,7 +36,9 @@ class UV3DArea(object):
         return math.sqrt(self.surface / self.uv)
 
     def _get_uv_area(self, idx):
-        """Return uv area of given face index."""
+        """
+        Return uv area of given face index.
+        """
         verts = self.get_polygon_vert(idx)
         vert_len = len(verts)-1
 
@@ -51,7 +53,9 @@ class UV3DArea(object):
             self.uv += abs((s - t) * 0.5)
 
     def _get_surface_area(self, idx):
-        """Return surface area of given face index."""
+        """
+        Return surface area of given face index.
+        """
         verts = self.get_polygon_vert(idx)
         vert_len = len(verts)-1
 
@@ -116,7 +120,9 @@ def set_texel_density(shell=True, target_density=0, texture_size=1024):
 
 
 def get_shells():
-    """Collect selected uv shells."""
+    """
+    Collect selected uv shells.
+    """
     s = mampy.selected()
     if not s:
         h = mampy.ls(hl=True)
@@ -134,10 +140,7 @@ def get_shells():
 
         for each in wanted:
             shell = mampy.MeshMap.create(c.dagpath)
-            for idx, num in enumerate(array):
-                if not num == each:
-                    continue
-                shell.add(idx)
+            shell.add([idx for idx, num in enumerate(array) if num == each])
             shells.append(shell)
     return list(shells.itercomps())
 
@@ -219,9 +222,11 @@ class AlignUV(object):
         return self._shell_sum
 
 
-# @mampy.history_chunk()
+@mampy.history_chunk()
 def align(mode):
-    """Aligns uvs given mode."""
+    """
+    Aligns uvs given mode.
+    """
     try:
         align_mode = {
             'maxu': AlignUV.MAX_U,
@@ -241,7 +246,9 @@ def align(mode):
 
 @mampy.history_chunk()
 def scalefit(mode):
-    """Docstring"""
+    """
+    Docstring
+    """
     try:
         scale_mode = {
             'maxu': AlignUV.SCALE_MAX_U,
@@ -277,7 +284,9 @@ def _get_align_kwargs(shell, align):
 
 @mampy.history_chunk()
 def distribute(mode):
-    """docstring."""
+    """
+    docstring.
+    """
     try:
         dist_mode = {
             'u': AlignUV.DISTRIBUTE_U,
@@ -455,21 +464,5 @@ def mirror(mode):
         point = shell.bounding_box.center
         shell.translate(**{mirror: -1, 'pu': point.u, 'pv': point.v})
 
-
 if __name__ == '__main__':
-    set_texel_density(True, 10240.0)
-    # print get_texel_density()
-    # s = mampy.selected()
-    # for i in s.itercomps():
-        # print i._indexed.isComplete
-
-    # for i in [UV3DArea(c) for c in s.itercomps()]:
-        # print i.ratio
-    # n = 15125.0590486 # get_texel_density()
-    # set_texel_density(target_density=n)
-
-    # mirror('u')
-    # orient()
-    # align('maxv')
-    # distribute('u')
-    # scalefit('maxv')
+    align('maxu')
