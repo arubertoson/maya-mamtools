@@ -43,22 +43,22 @@ def viewport_snap():
         top = mampy.Camera('top')
 
         new_camera = mampy.DagNode(cmds.duplicate('top', name='bottom').pop())
-        new_camera.translateY.set(top.translateY.get()*-1)
-        new_camera.rotateX.set(top.rotateX.get()*-1)
+        new_camera['translateY'] = top.translateY*-1
+        new_camera['rotateX'] = top.rotateX*-1
 
     if 'back' not in cameras:
         back = mampy.Camera('front')
 
         new_camera = mampy.DagNode(cmds.duplicate('front', name='back').pop())
-        new_camera.translateZ.set(back.translateZ.get()*-1)
-        new_camera.rotateY.set(-180)
+        new_camera['translateZ'] = back.translateZ*-1
+        new_camera['rotateY'] = -180
 
     if 'left' not in cameras:
         side = mampy.Camera('side')
 
         new_camera = mampy.DagNode(cmds.duplicate('side', name='left').pop())
-        new_camera.translateX.set(side.translateX.get()*-1)
-        new_camera.rotateY.set(side.rotateY.get()*-1)
+        new_camera['translateX'] = side.translateX*-1
+        new_camera['rotateY'] = side.rotateY*-1
 
     view = mampy.Viewport.active()
     camera = mampy.Camera(view.camera)
@@ -86,7 +86,7 @@ def maximize_viewport_toggle():
 
 
 if __name__ == '__main__':
-    pass
+    viewport_snap()
     # cmds.select('persp')
 
     # cmds.xform('persp', os=True, rp=[0,0,0])

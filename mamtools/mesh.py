@@ -2,6 +2,8 @@ import sys
 import math
 import logging
 
+from PySide import QtGui, QtCore
+
 import maya.cmds as cmds
 import maya.api.OpenMaya as api
 
@@ -12,7 +14,6 @@ logger.setLevel(logging.DEBUG)
 
 
 EPS = sys.float_info.epsilon
-
 
 @mampy.history_chunk()
 def bevel():
@@ -71,7 +72,9 @@ def detach_mesh(extract=False):
 
         dcomp = mampy.MeshPolygon.create(dupdag)
         dcomp.add(comp.indices)
-        cmds.polyDelFacet(list(dcomp.toggle()))
+        print dcomp.is_complete()
+        if not dcomp.is_complete():
+            cmds.polyDelFacet(list(dcomp.toggle()))
 
         # Select
         cmds.hilite(str(dcomp.dagpath))
@@ -101,11 +104,12 @@ def combine_separate():
         cmds.reorder(dag.name, r=outliner_index)
         trns.set_pivot(pivot)
 
-        dag.rotate.set(*src_trns.rotate)
-        dag.scale.set(*src_trns.scale)
+        dag['rotate'] = list(src_trns.rotate)
+        dag['scale'] = list(src_trns.scale)
         return dag.name
 
-    s, hl = mampy.ordered_selection(tr=True, l=True), mampy.ls(hl=True)
+    s = mampy.ordered_selection(tr=True, l=True)
+    hl = mampy.ls(hl=True)
     if len(s) == 0:
         if len(hl) > 0:
             s = hl
@@ -113,7 +117,6 @@ def combine_separate():
             return logger.warn('Nothing Selected.')
 
     dag = s.pop()
-    logger.debug(dag)
     parent = dag.get_parent()
 
     # Get origin information from source object
@@ -134,8 +137,8 @@ def combine_separate():
     # Now we can check source objects position in outliner and
     # un-rotate/un-scale
     outliner_index = mampy.get_outliner_index(dag)
-    dag.rotate.set(0, 0, 0)
-    dag.scale.set(1, 1, 1)
+    dag.rotate = (0, 0, 0)
+    dag.scale = (1, 1, 1)
 
     # Perform combine or separate and clean up objects and leftover nulls.
     if s:
@@ -240,6 +243,7 @@ def spin_edge():
 
 def get_vert_order_on_edge_row(indices):
     """
+    .. note:: Should probably be moved to mampy.
     """
     idx = 0
     next_ = None
@@ -396,4 +400,4 @@ def make_circle(mode=0):
 
 
 if __name__ == '__main__':
-    make_circle(1)
+    combine_separate()
