@@ -16,6 +16,10 @@ __version__ = "0.4.0"
 __license__ = "MIT"
 
 
-from mamtools import (select, mesh, camera, display, delete, uv, utils,
-                      contexts)
-from mamtools.api import *
+from mamtools import camera, contexts, delete, display, mesh, mesh_select, viewport_masks
+
+
+def mel(command):
+    print(command)
+    from maya import mel
+    mel.eval("{}".format(command))
