@@ -1,24 +1,28 @@
 """
 """
-from maya import cmds, mel
+from maya import cmds
 import maya.api.OpenMaya as api
 
 import mampy
+from mampy.utils import mvp, DraggerCtx
+from mampy.nodes import DependencyNode
+from mampy.selections import SelectionList
+from mampy.components import MeshVert
 
 
 def get_distance_from_camera(sel):
-    view = mampy.Viewport.active()
-    camera = mampy.DagNode(view.camera)
+    view = mvp.Viewport.active()
+    camera = mampy.get_node(view.camera)
 
     vec = api.MPoint()
     for i in sel.itercomps():
         vec += i.bounding_box.center
 
-    vec = camera.bounding_box.center - (vec/len(sel))
+    vec = camera.bounding_box.center - (vec / len(sel))
     return vec.length()
 
 
-class bevel(mampy.DraggerCtx):
+class bevel(DraggerCtx):
 
     def __init__(self):
         self.name = 'mamtools_bevel_context'
@@ -31,20 +35,20 @@ class bevel(mampy.DraggerCtx):
         """
         self.nodes = []
         for comp in mampy.selected().itercomps():
-            node = cmds.polyBevel(
+            node = cmds.polyBevel3(
                 list(comp),
                 offsetAsFraction=True,
                 fraction=0.2,
                 segments=1,
-                worldSpace=True,
+                # worldSpace=True,
                 fillNgons=True,
                 mergeVertices=True,
                 mergeVertexTolerance=0.0001,
                 smoothingAngle=30,
                 miteringAngle=180,
-                angleTolerance=180,
-                )[0]
-            self.nodes.append(mampy.DependencyNode(node))
+                # angleTolerance=180,
+            )[0]
+            self.nodes.append(DependencyNode(node))
 
         # Reset values
         self.segments = 1
@@ -55,7 +59,7 @@ class bevel(mampy.DraggerCtx):
         change_fraction = (self.dragPoint[0] - self.anchorPoint[0]) * 0.004
         self.fraction = change_fraction + self.anchor_fraction
 
-        if self.fraction > 1: self.fraction = 1.0
+        if self.fraction > 5: self.fraction = 1.0
         elif self.fraction < 0: self.fraction = 0.0
 
         for node in self.nodes:
@@ -79,7 +83,7 @@ class bevel(mampy.DraggerCtx):
         self.anchor_segments = self.segments
 
 
-class extrude(mampy.DraggerCtx):
+class extrude(DraggerCtx):
     """
     """
     def __init__(self):
@@ -95,7 +99,7 @@ class extrude(mampy.DraggerCtx):
         """
         self.nodes = []
         self.is_vert = False
-        self.sel = mampy.SelectionList()
+        self.sel = SelectionList()
         for comp in mampy.selected().itercomps():
             cmds.select(list(comp), r=True)
             if comp.type == api.MFn.kMeshEdgeComponent:
@@ -103,21 +107,21 @@ class extrude(mampy.DraggerCtx):
                     keepFacesTogether=True,
                     offset=0,
                     thickness=0,
-                    )[0]
+                )[0]
             elif comp.type == api.MFn.kMeshPolygonComponent:
                 node = cmds.polyExtrudeFacet(
                     keepFacesTogether=True,
                     offset=0,
                     thickness=0,
-                    )[0]
+                )[0]
             elif comp.type == api.MFn.kMeshVertComponent:
                 self.is_vert = True
                 node = cmds.polyExtrudeVertex(
                     length=0,
                     width=0,
-                    )[0]
+                )[0]
             self.sel.extend(mampy.selected())
-            self.nodes.append(mampy.DependencyNode(node))
+            self.nodes.append(DependencyNode(node))
 
         # Select new created geo and reset values
         cmds.select(list(self.sel), r=True)
@@ -216,11 +220,11 @@ class extrude(mampy.DraggerCtx):
         multiplier = get_distance_from_camera(self.sel) * mp
         change_offset = (self.dragPoint[0] - self.anchorPoint[0])
         change_thickness = (self.dragPoint[1] - self.anchorPoint[1])
-        self.offset = (change_offset*multiplier) + self.anchor_offset
-        self.thickness = (change_thickness*multiplier) + self.anchor_thickness
+        self.offset = (change_offset * multiplier) + self.anchor_offset
+        self.thickness = (change_thickness * multiplier) + self.anchor_thickness
 
 
-class edge_slice(mampy.DraggerCtx):
+class edge_slice(DraggerCtx):
     """
     Edge Slice context.
 
@@ -248,10 +252,11 @@ class edge_slice(mampy.DraggerCtx):
             edge = mampy.selected().itercomps().next()
             verts = edge.mesh.getEdgeVertices(edge.index)
             a, b = [
-                mampy.MeshVert.create(edge.dagpath).add(i).points[0]
+                MeshVert.create(edge.dagpath).add(i).points[0]
                 for i in verts
-                ]
-            self._multiplier = (a-b).length()
+            ]
+            self._multiplier = (a - b).length()
+            print self._multiplier
         return self._multiplier
 
     def setup(self):
@@ -280,8 +285,8 @@ class edge_slice(mampy.DraggerCtx):
             weight=self.weight,
             insertWithEdgeFlow=1,
             adjustEdgeFlow=self.edge_flow,
-            )[0]
-        self.split_node = mampy.DependencyNode(self.split_node)
+        )[0]
+        self.split_node = DependencyNode(self.split_node)
 
     def drag_left(self):
         """
@@ -293,7 +298,7 @@ class edge_slice(mampy.DraggerCtx):
             return
 
         change = (self.dragPoint[0] - self.anchorPoint[0])
-        self.weight = self.anchor_weight + (change/self.multiplier)
+        self.weight = self.anchor_weight + (change / self.multiplier * 0.001)
 
         if self.weight > 1: self.weight = 1.0
         elif self.weight < 0: self.weight = 0.0
@@ -315,7 +320,7 @@ class edge_slice(mampy.DraggerCtx):
         if self.divisions > 1:
             self.split_node['splitType'] = 2
         else:
-            self.split_node['splitType'] = 0
+            self.split_node['splitType'] = 1
 
             self.weight = 0.5
             self.edge_flow = 0
@@ -352,4 +357,4 @@ class edge_slice(mampy.DraggerCtx):
 
 
 if __name__ == '__main__':
-    edge_slice()
+    bevel()

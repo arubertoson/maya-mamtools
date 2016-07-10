@@ -1,12 +1,12 @@
 import logging
 import collections
-from functools import partial
 
 import maya.cmds as cmds
 import maya.api.OpenMaya as api
 
 import mampy
-import mamtools
+from mampy.utils import undoable, repeatable
+from mampy.components import MeshPolygon
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,8 @@ __all__ = ['delete', 'history', 'collapse', 'merge_faces', 'merge_verts',
            'transforms']
 
 
-@mampy.history_chunk()
+@undoable
+@repeatable
 def delete(cv=False):
     """Custom delete using 'right' delete function depending on selection."""
     s = mampy.selected()
@@ -36,16 +37,19 @@ def delete(cv=False):
             cmds.delete(str(comp), ch=False)
 
 
+@repeatable
 def history():
     """Delete history on selected objects, works on hilited objects."""
     s = mampy.selected()
     h = mampy.ls(hl=True, dag=True)
-    if h: s.extend(h)
+    if h:
+        s.extend(h)
 
     cmds.delete(list(s), ch=True)
 
 
-@mampy.history_chunk()
+@undoable
+@repeatable
 def collapse():
     s = mampy.selected()
     if not s or next(s.itercomps(), None) is None:
@@ -58,11 +62,12 @@ def collapse():
         cmds.polyMergeVertex(list(comp), distance=0.001)
 
 
-@mampy.history_chunk()
+@undoable
+@repeatable
 def merge_faces():
     """Removes edges inside of face selection."""
     s = mampy.selected()
-    if (not s or not isinstance(next(s.itercomps()), mampy.MeshPolygon) or
+    if (not s or not isinstance(next(s.itercomps()), MeshPolygon) or
             not len(s[0]) > 1):
         return logger.warn('Invalid Selection, must have 2 or more polygons'
                            'selected.')
@@ -83,11 +88,10 @@ def merge_faces():
     cmds.select(list(faces))
 
 
-@mampy.history_chunk()
+@undoable
+@repeatable
 def merge_verts(move):
-    """
-    Merges verts to first selection.
-    """
+    """Merges verts to first selection."""
     if move:
         s = mampy.ordered_selection(fl=True)
         pos = s[0].points[0]
@@ -98,9 +102,11 @@ def merge_verts(move):
     cmds.polyMergeVertex(list(s), distance=0.001, ch=True)
 
 
+@undoable
+@repeatable
 def transforms(translate=False, rotate=False, scale=False):
     """Small function to control transform freezes."""
-    s, h = mampy.selected(tr=True, l=True), mampy.ls(hl=True, dag=True)
+    s, h = mampy.ls(tr=True, l=True), mampy.ls(hl=True, dag=True)
     if h:
         s = h
 
