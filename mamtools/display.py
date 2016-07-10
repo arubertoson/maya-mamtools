@@ -5,9 +5,11 @@ import maya.mel as mel
 from maya.api.OpenMaya import MFn
 
 import mampy
+from mampy.selections import SelectionList
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 __all__ = ['unhide_all', 'visibility_toggle', 'isolate_selected',
@@ -90,15 +92,18 @@ class SubDToggle(object):
     def __init__(self):
         self._meshes = None
         self._state = None
+        self._all = False
 
     def all(self, off=False):
         """SubD toggle all meshes off or on."""
-        self._state = off
+        self._all = True
+        self._state = 3 if off else 0
         self._meshes = self.get_meshes(all=True)
         self._toggle()
 
     def selected(self, hierarchy=False):
         """SubD toggle selected meshes."""
+        self._all = False
         self._hierarchy = hierarchy
         self._meshes = self.get_meshes(all=False)
         self._toggle()
@@ -112,7 +117,7 @@ class SubDToggle(object):
             meshes = self.get_meshes(all=False)
 
         for mesh in meshes.iterdags():
-            mesh.smoothLevel.set(mesh.smoothLevel.get()+level)
+            mesh.smoothLevel.set(mesh.smoothLevel.get() + level)
 
     def get_meshes(self, all=True):
         """Return all SubD meshes in scene."""
@@ -122,7 +127,7 @@ class SubDToggle(object):
             if self._hierarchy:
                 s = mampy.ls(sl=True, dag=True, type='mesh')
             else:
-                s = mampy.SelectionList()
+                s = SelectionList()
                 for i in mampy.selected().iterdags():
                     shape = i.get_shape()
                     if shape is None:
@@ -137,14 +142,14 @@ class SubDToggle(object):
 
     def _toggle(self):
         """Toggle specified meshes."""
-        for mesh in self._meshes:
+        for mesh in self._meshes.iterdags():
             try:
-                if self._state is None or self._state:
-                    state = cmds.displaySmoothness(str(mesh), q=True, po=True)
-                else:
-                    state = self._state
-
-                cmds.displaySmoothness(str(mesh), po=0 if state.pop() else 3)
+                if self._all:
+                    logger.debug('doing all {}, {}'.format(self._all, self._state))
+                    cmds.displaySmoothness(str(mesh), po=self._state)
+                elif self._state is None or self._state:
+                    state = cmds.displaySmoothness(str(mesh), q=True, po=True)[0]
+                    cmds.displaySmoothness(str(mesh), po=0 if state == 3 else 3)
             except AttributeError:
                 logger.warn('{} is of type: {}'.format(mesh, type(mesh)))
 
@@ -161,7 +166,7 @@ def unhide_all(unhide_types=None):
     for dag in s.iterdags():
         shape = dag.get_shape()
         if shape is None or shape.type == MFn.kMesh:
-            dag.visibility.set(True)
+            dag["visibility"] = True
 
 
 def visibility_toggle():
@@ -189,6 +194,7 @@ def subd_toggle(all=False, hierarchy=True, off=None):
     if SubDToggle.instance is None:
         SubDToggle.instance = SubDToggle()
 
+    logger.debug('all state: {}'.format(all))
     if all:
         SubDToggle.instance.all(off)
     else:
@@ -209,7 +215,7 @@ def subd_level(level, all=False, hierarchy=True):
             level,
             all=all,
             hierarchy=hierarchy
-            )
+        )
 
 
 def display_edges(show_hard=True):
@@ -262,7 +268,7 @@ def display_xray():
     """
     Toggles xray on selected objects.
     """
-    s = mampy.selected()
+    s = mampy.ls(sl=True, dag=True, type='mesh')
     h = mampy.ls(hl=True, dag=True, type='mesh')
     if h: s.extend(h)
 
@@ -358,7 +364,7 @@ def view_outliner(floating=False):
             content=TABLAYOUT,
             allowedArea=['left', 'right'],
             area='right',
-            )
+        )
 
     # Tear it off or dock it depending on floating arg.
     vis_state = cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, vis=True)
@@ -371,7 +377,7 @@ def view_outliner(floating=False):
             DOCK_CONTROL_OUTLINER,
             e=True,
             vis=not(cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, vis=True)),
-            )
+        )
 
     if not cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, vis=True):
         try:
@@ -442,8 +448,7 @@ def view_script_editor(direction='bottom', floating=False):
             # height=500,
             floating=False,
             allowedArea=['bottom']
-            )
-
+        )
 
     # Constants
     SCRIPT_OUTPUT_WINDOW = 'MAM_SCRIPT_OUTPUT_WINDOW'
@@ -504,6 +509,7 @@ def view_hypergraph():
 
 def view_node_editor():
     mel.eval('NodeEditorWindow;')
+
 
 if __name__ == '__main__':
     view_script_editor(floating=True)
