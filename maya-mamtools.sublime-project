@@ -1,0 +1,41 @@
+{
+	"build_systems":
+	[
+		{
+			"name": "Python",
+			"shell_cmd": "python -u \"$file\"",
+			"working_dir": "${project_path}"
+		},
+		{
+			"name": "Python (test)",
+			"shell_cmd": "py \"$file\"",
+			"working_dir": "${project_path}"
+		},
+		{
+			"file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
+			"name": "Anaconda Python Builder",
+			"selector": "source.python",
+			"shell_cmd": "\"C:\\Python27\\python\" -u \"$file\""
+		}
+	],
+	"folders":
+	[
+		{
+			"file_exclude_patterns":
+			[
+				"*.pyc"
+			],
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"extra_paths":
+		[
+			"C:\\Program Files\\Autodesk\\Maya2015\\devkit\\other\\pymel\\extras\\completion\\py",
+			"G:\\dev\\maya\\maya-mampy"
+		],
+		"python_interpreter": "C:\\Python27\\python",
+		"show_panel_on_build": false
+	}
+}

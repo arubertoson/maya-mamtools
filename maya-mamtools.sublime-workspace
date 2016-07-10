@@ -1,0 +1,1217 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"bri",
+				"bridge_face	function"
+			],
+			[
+				"polyBr",
+				"polyBridgeEdge"
+			],
+			[
+				"mesh",
+				"mesh_select	module"
+			],
+			[
+				"bord",
+				"border_edges	statement"
+			],
+			[
+				"ind",
+				"indices"
+			],
+			[
+				"comp",
+				"component	forstmt"
+			],
+			[
+				"SLi",
+				"SelectionList	class"
+			],
+			[
+				"in",
+				"index	function"
+			],
+			[
+				"sel",
+				"selected"
+			],
+			[
+				"bor",
+				"borders	statement"
+			],
+			[
+				"iter",
+				"itervalues	function"
+			],
+			[
+				"i",
+				"ifmain	if __name__ == '__main__'"
+			],
+			[
+				"map",
+				"map_mask	function"
+			],
+			[
+				"kMesh",
+				"kMeshEdgeComponent"
+			],
+			[
+				"func",
+				"functools	module"
+			],
+			[
+				"path",
+				"pathlib2	module"
+			],
+			[
+				"set",
+				"set_mask	function"
+			],
+			[
+				"objec",
+				"object_component	param"
+			],
+			[
+				"object",
+				"object_mode	param"
+			],
+			[
+				"compon",
+				"component_keywords"
+			],
+			[
+				"compp",
+				"component_selection_keep"
+			],
+			[
+				"get_",
+				"get_selected_dag"
+			],
+			[
+				"close",
+				"closeChunk"
+			],
+			[
+				"moel",
+				"model_toolkit_toggle"
+			],
+			[
+				"fun",
+				"functools	module"
+			],
+			[
+				"base",
+				"base_tools	statement"
+			],
+			[
+				"press",
+				"press_command"
+			],
+			[
+				"Key",
+				"KeyPress	instance"
+			],
+			[
+				"Mo",
+				"MouseButtonRelease	instance"
+			],
+			[
+				"Mouse",
+				"MouseButtonPress	instance"
+			],
+			[
+				"pre",
+				"press_command"
+			],
+			[
+				"release",
+				"release_command"
+			],
+			[
+				"basi",
+				"basicConfig	function"
+			],
+			[
+				"contex",
+				"context_string	statement"
+			],
+			[
+				"conte",
+				"context_string	statement"
+			],
+			[
+				"maya",
+				"maya_context	statement"
+			],
+			[
+				"def",
+				"default_context"
+			],
+			[
+				"aci",
+				"active	statement"
+			],
+			[
+				"re",
+				"replace_hotkeys	function"
+			],
+			[
+				"HOtk",
+				"HotkeyManager	class"
+			],
+			[
+				"ac",
+				"activate	function"
+			],
+			[
+				"Mou",
+				"MouseEventEater	class"
+			],
+			[
+				"MOuse",
+				"MouseButtonPress	instance"
+			],
+			[
+				"modi",
+				"modifier"
+			],
+			[
+				"tran",
+				"translate"
+			],
+			[
+				"tra",
+				"translate"
+			],
+			[
+				"Key_ex",
+				"Key_Exclam	instance"
+			],
+			[
+				"Key_Exc",
+				"Key_Exclam	instance"
+			],
+			[
+				"Key_b",
+				"Key_B	instance"
+			],
+			[
+				"Q",
+				"QApplication	class"
+			],
+			[
+				"se",
+				"sequence	statement"
+			],
+			[
+				"QKey",
+				"QKeySequence	class"
+			],
+			[
+				"Cu",
+				"CURRENT_HOTKEY_NAME"
+			],
+			[
+				"rest",
+				"reset_walker"
+			],
+			[
+				"handl",
+				"handle_event"
+			],
+			[
+				"activa",
+				"active_map"
+			],
+			[
+				"spl",
+				"splitext	function"
+			],
+			[
+				"curre",
+				"current_level"
+			],
+			[
+				"currn",
+				"current_level"
+			],
+			[
+				"wa",
+				"walk_context	function"
+			],
+			[
+				"_config",
+				"_config_paths	globalstmt"
+			],
+			[
+				"Hotkey",
+				"HotkeyWalker	class"
+			],
+			[
+				"reset",
+				"reset_walker"
+			],
+			[
+				"Hotk",
+				"HotkeyManager	class"
+			],
+			[
+				"mam",
+				"mamqkeys	module"
+			],
+			[
+				"quick",
+				"quickkeys_mouse_interactables"
+			],
+			[
+				"mo",
+				"modifiers	function"
+			],
+			[
+				"_bu",
+				"_button_keycode	statement"
+			],
+			[
+				"assert",
+				"assertFalse	function"
+			],
+			[
+				"bu",
+				"button	function"
+			],
+			[
+				"button",
+				"button_keycode	function"
+			],
+			[
+				"fil",
+				"file_	param"
+			],
+			[
+				"dic",
+				"dictize	statement"
+			],
+			[
+				"a",
+				"active	statement"
+			],
+			[
+				"Ho",
+				"Hotkey	function"
+			],
+			[
+				"act",
+				"active"
+			],
+			[
+				"acti",
+				"active"
+			],
+			[
+				"try",
+				"try	Try/Except"
+			],
+			[
+				"handle_",
+				"handle_sequence"
+			],
+			[
+				"QEven",
+				"QEvent	class"
+			],
+			[
+				"debug",
+				"DEBUG	statement"
+			],
+			[
+				"sub",
+				"__subclasses__	function"
+			],
+			[
+				"getM",
+				"getM3dViewFromModelPanel	function"
+			],
+			[
+				"QApp",
+				"QApplication	class"
+			],
+			[
+				"mouse",
+				"MouseButtonPress	instance"
+			],
+			[
+				"right",
+				"RightButton	instance"
+			],
+			[
+				"Left",
+				"LeftButton	instance"
+			]
+		]
+	},
+	"build_system": "Packages/Python/Python.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Python/Python.sublime-build",
+					""
+				],
+				[
+					"Packages/Python/Python.sublime-build",
+					"Syntax Check"
+				]
+			],
+			[
+				"Packages/Python/Python.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 467.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				":edit",
+				"Project: Edit"
+			],
+			[
+				":lin",
+				"Anaconda: Disable linting on this file"
+			],
+			[
+				":json",
+				"Set Syntax: JSON"
+			],
+			[
+				"status",
+				"Git: Status"
+			],
+			[
+				":git st",
+				"Set Syntax: SublimeGit Status"
+			],
+			[
+				":test",
+				"Anaconda: Run Current Test"
+			],
+			[
+				":default",
+				"Preferences: Key Bindings - Default"
+			],
+			[
+				":install",
+				"Package Control: Install Package"
+			],
+			[
+				":lint",
+				"Anaconda: Disable linting on this file"
+			],
+			[
+				":defau",
+				"Preferences: Key Bindings - Default"
+			],
+			[
+				"Unit",
+				"UnitTesting: Quick Run"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"edit",
+				"Project: Edit"
+			],
+			[
+				":w",
+				":w - Save"
+			],
+			[
+				":tes",
+				"Anaconda: Run Project Tests"
+			],
+			[
+				":te",
+				"Anaconda: Run Project Tests"
+			],
+			[
+				"test",
+				"Anaconda: Run Current Test"
+			],
+			[
+				"remo",
+				"Package Control: Remove Package"
+			],
+			[
+				":remove",
+				"Package Control: Remove Channel"
+			],
+			[
+				"find us",
+				"Anaconda: Find object usage"
+			],
+			[
+				":usag",
+				"Anaconda: Find object usage"
+			],
+			[
+				"synta",
+				"Set Syntax: JSON"
+			],
+			[
+				"goto",
+				"Anaconda: Goto object definition"
+			],
+			[
+				"synta j",
+				"Set Syntax: JSON"
+			],
+			[
+				":linting",
+				"Anaconda: Disable linting on this file"
+			],
+			[
+				":curren",
+				"Anaconda: Run Current Test"
+			],
+			[
+				":curret",
+				"Anaconda: Run Current Test"
+			],
+			[
+				"Curren",
+				"Anaconda: Run Current Test"
+			],
+			[
+				":current",
+				"Anaconda: Run Current Test"
+			],
+			[
+				":ru",
+				"Anaconda: Run Current Test"
+			],
+			[
+				":las",
+				"Anaconda: Run Last Test"
+			],
+			[
+				":last",
+				"Anaconda: Run Last Test"
+			],
+			[
+				":run",
+				"Anaconda: Run Current Test"
+			],
+			[
+				"user ",
+				"Preferences: Settings - User"
+			],
+			[
+				"default",
+				"Preferences: Key Bindings - Default"
+			],
+			[
+				"user",
+				"Preferences: Settings - User"
+			],
+			[
+				"lint",
+				"Anaconda: Disable linting on this file"
+			],
+			[
+				":install ",
+				"Package Control: Install Package"
+			],
+			[
+				"anaconda test",
+				"Anaconda: Run Current Test"
+			],
+			[
+				"syntax json",
+				"Set Syntax: JSON"
+			],
+			[
+				"remove",
+				"Package Control: Remove Package"
+			],
+			[
+				"remove pack",
+				"Package Control: Remove Package"
+			],
+			[
+				"install pac",
+				"Package Control: Install Package"
+			],
+			[
+				"setings",
+				"Preferences: Settings - Default"
+			],
+			[
+				"word",
+				"Word Wrap: Toggle"
+			],
+			[
+				"editr",
+				"Project: Edit Project"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"packag in",
+				"Package Control: Install Package"
+			],
+			[
+				"con",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"settings",
+				"Preferences: Settings - Default"
+			],
+			[
+				"sytnax js",
+				"Set Syntax: JSON"
+			],
+			[
+				"markdown p",
+				"Markdown Preview: Preview in Browser"
+			],
+			[
+				"markdown",
+				"Markdown Preview: Open Markdown Cheat sheet"
+			],
+			[
+				"conver",
+				"Indentation: Convert to Spaces"
+			]
+		],
+		"width": 597.0
+	},
+	"console":
+	{
+		"height": 367.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": false,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/C/Program Files/Autodesk/Maya2016/scripts/others/polyBridgeFaces.mel",
+		"/G/dev/maya/maya-mamtools/mamtools/__bu/select.py",
+		"/G/dev/maya/maya-mampy/mampy/comp.py",
+		"/G/dev/maya/maya-mamtools/mamtools/select.py",
+		"/G/dev/maya/maya-mamselect/mamselect/__init__.py",
+		"/G/dev/maya/maya-mamtools/mamtools/select/__init__.py",
+		"/G/dev/maya/maya-viewportmasks/viewportmasks/__init__",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/Vintage/Default.sublime-keymap",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/Vintage/Default (Windows).sublime-keymap",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/User/Default (Windows).sublime-keymap",
+		"/G/dev/maya/maya-mampy/mampy/utils.py",
+		"/G/Macke/Desktop/clay_polyCurves.V1.0/scripts/clay_polyCurves.mel",
+		"/G/dev/maya/maya-mamqtkeys/mamqtkeys/sequence.py",
+		"/G/dev/maya/maya-mamqtkeys/mamqtkeys/utils.py",
+		"/G/dev/maya/maya-mamqtkeys/mamqtkeys/walker.py",
+		"/G/dev/maya/maya-mamqtkeys/mamqtkeys/events.py",
+		"/G/dev/maya/maya-mamtools/mamtools/display.py",
+		"/G/dev/maya/maya-mamtools/mamtools/testy.py",
+		"/G/dev/maya/maya-mamqtkeys/.gitignore",
+		"/G/dev/maya/maya-mamqtkeys/mamqtkeys/manager.py",
+		"/G/dev/maya/maya-mamqkeys/prefs/model.hotkey",
+		"/G/dev/maya/__backups/__init__.py",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/Vintage/Default (Windows).sublime-keymap",
+		"/G/dev/maya/__backups/quickkeys_mouse_interactables.py",
+		"/G/dev/maya/maya-mamqkeys/tests/test_sequence.py",
+		"/G/dev/maya/__backups/quickkeys.py",
+		"/G/dev/maya/maya-mamqkeys/tests/test_walker.py",
+		"/G/wait.py",
+		"/G/wait2.py",
+		"/G/dev/maya/maya-mamqkeys/mamqkeys/__init__.py",
+		"/G/dev/maya/maya-mamqkeys/tests/test_eventfilter.py",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/Default/Default (Windows).sublime-keymap",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/Vintage/Default.sublime-keymap",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/Vintage/vintage.py",
+		"/G/dev/maya/maya-mamqkeys/mamqkeys/walker.py",
+		"/G/dev/maya/maya-mamqkeys/.travis.yml",
+		"/G/dev/maya/maya-mamqkeys/mamqkeys/tests/test_sequence.py",
+		"/G/dev/maya/maya-mamqkeys/tests/test_quickkeys.py",
+		"/G/dev/maya/maya-mamqkeys/mamqkeys/quickkeys.py",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/User/Default (Windows).sublime-keymap",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/User/hotkey_snips.sublime-snippet",
+		"/C/Python34/Lib/abc.py",
+		"/C/Python34/Lib/ast.py",
+		"/G/dev/maya/userSetup.py",
+		"/G/dev/maya/maya-mamqkeys/sequence.py",
+		"/G/dev/maya/maya-mamqkeys/quickkeys.sublime-project",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/User/Anaconda.sublime-settings",
+		"/G/dev/maya/maya-mamqkeys/mamqkeys/.quickkeys",
+		"/G/dev/maya/maya-mamprefs/mamprefs/hotkeys.py",
+		"/C/Users/Macke/AppData/Roaming/mayalauncher/.config",
+		"/G/dev/maya/maya-quickkeys/mamqkeys/quickkeys_mouse_interactables.py",
+		"/G/dev/maya/maya-quickkeys/.quickkeys",
+		"/G/dev/maya/maya-quickkeys/quickkeys.py",
+		"/G/dev/maya/maya-quickkeys/__init__.py",
+		"/G/dev/maya/maya-mamprefs/mamprefs/.mamprefs",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/User/Preferences.sublime-settings",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/Vintage/vintage.py",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/User/Preferences.sublime-settings.BAK",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/Vintage/vintage_motions.py",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/User/Package Control.sublime-settings.BAK",
+		"/G/dev/maya/maya-quickkeys/test_quickkeys.py",
+		"/G/dev/maya/maya-quickkeys/quickkeys.sublime-project",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/Vintage/Preferences.sublime-settings",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/Vintage/Preferences (OSX).sublime-settings",
+		"/G/Hi Wolf,",
+		"/G/snippets",
+		"/G/config",
+		"/G/widgfe tree",
+		"/G/Macke/Dropbox/dev/modo/mdaru/cfg/hotkeys.cfg",
+		"/C/Program Files/Autodesk/Maya2015/include/maya/MQtUtil.h",
+		"/G/Macke/Downloads/rjCMDSearch.py",
+		"/G/Macke/Downloads/StyleMaya.py",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/User/Projects/maya-mamtools.sublime-project",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/DistractionFreeWindow/distraction_free_window.sublime-settings",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/User/distraction_free_window.sublime-settings",
+		"/G/dev/maya/maya-mamprefs/prefs/modonaut.color",
+		"/G/Macke/Dropbox/appsettings/sublime/Packages/User/Distraction Free.sublime-settings",
+		"/G/dev/maya/maya-mamprefs/README.md",
+		"/C/Users/Macke/AppData/Roaming/Sublime Text 3/Packages/Default/Preferences.sublime-settings",
+		"/G/dev/maya/maya-mamprefs/.gitignore"
+	],
+	"find":
+	{
+		"height": 27.0
+	},
+	"find_in_files":
+	{
+		"height": 115.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+			"\"d\"",
+			"get_border_loop_from_edge_index",
+			"get_border_from_edge_index",
+			"get__border_from_edge_index",
+			"get_complete_border_from_edges",
+			"selection",
+			"str",
+			"MGlobal",
+			"MFn",
+			"slist",
+			"dagpath",
+			"mesh",
+			"dagpath",
+			"clear",
+			"hlist",
+			"selection",
+			"slist",
+			"comp",
+			"tglist",
+			"slist",
+			"POINT",
+			"(comptype)",
+			"set_selection_mask",
+			"mamtools.utils.select_mode",
+			"objectComponent",
+			"type_",
+			"}",
+			"s",
+			"mampy",
+			"cmds",
+			"\n",
+			"mampy.undoable()",
+			"mampy.history_chunk",
+			"convert",
+			"dR_DoCmd(\"selectRelease",
+			"mamqkeys",
+			"logging",
+			"  ",
+			"logging",
+			"logger",
+			"context",
+			"logger",
+			"initialize_settings",
+			"tooless",
+			"contexts",
+			"key_eater",
+			"sequence",
+			"name",
+			"logger",
+			"hotkeys",
+			"globals",
+			"item",
+			"QtGui.",
+			"bookmark",
+			"\"`\"",
+			"true",
+			"false",
+			"true",
+			"false",
+			"selection",
+			"from",
+			"viusal",
+			"visual",
+			"args",
+			" \"",
+			"\":\"",
+			"ControlModifier",
+			"modifiers",
+			"mods",
+			"seq",
+			"mevent",
+			"mouse_map",
+			"mouse_",
+			"MOUSE_MAP",
+			"seq",
+			"mevent",
+			"        ",
+			"ctrl+j",
+			"command",
+			"seuence",
+			"pass",
+			"QtCore",
+			"()",
+			"Program",
+			":\\",
+			"self",
+			"get_nice_name",
+			"handle_sequence",
+			"timer",
+			"current_level",
+			"Hotkey",
+			"CONFIG_PATHS",
+			"HOTKEY_TIMEOUT_MILLISECONDS",
+			"activate",
+			"import",
+			"main_menu",
+			"_button",
+			"_modifiers",
+			"parse_command",
+			"_hotkey_manager",
+			"hotkey",
+			"key_map",
+			"\"up\"",
+			"up",
+			"auto_complete",
+			"hotkey_map",
+			"hotkey_manager",
+			"HotkeyManager",
+			"press_command",
+			"kwargs",
+			"release_command",
+			"press_command",
+			"visual",
+			"release_command",
+			"press_command",
+			"prev",
+			"ctrl+d",
+			"HotkeyManger",
+			"modelPanel",
+			"fold",
+			"QtCore",
+			"editor",
+			"folders",
+			"caret",
+			"()\n",
+			"None",
+			"lassoSelectContext",
+			"widget"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"mampy.undoable",
+			"mamqtkeys"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"incremental_find":
+	{
+		"height": 39.0
+	},
+	"input":
+	{
+		"height": 38.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.5,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": false,
+	"output.exec":
+	{
+		"height": 243.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/Python/Python.sublime-build",
+	"replace":
+	{
+		"height": 78.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"dele",
+				"mamtools\\delete.py"
+			],
+			[
+				"conte",
+				"mamtools\\contexts.py"
+			],
+			[
+				"mesh",
+				"mamtools\\mesh_select.py"
+			],
+			[
+				"camera",
+				"mamtools\\camera.py"
+			],
+			[
+				"in",
+				"mamtools\\__init__.py"
+			],
+			[
+				"selecty",
+				"mamtools\\__bu\\select.py"
+			],
+			[
+				"select",
+				"mamtools\\select.py"
+			],
+			[
+				"view",
+				"mamtools\\viewport_masks.py"
+			],
+			[
+				"test",
+				"mamtools\\testy.py"
+			],
+			[
+				"cam",
+				"mamtools\\camera.py"
+			],
+			[
+				"util",
+				"mamtools\\utils.py"
+			],
+			[
+				"it",
+				"mamtools\\__init__.py"
+			],
+			[
+				"utl",
+				"mamtools\\utils.py"
+			],
+			[
+				"sele",
+				"mamtools\\select.py"
+			],
+			[
+				"camer",
+				"mamtools\\camera.py"
+			],
+			[
+				"",
+				"mamtools\\display.py"
+			],
+			[
+				"sel",
+				"mamtools\\select.py"
+			],
+			[
+				"delete",
+				"mamtools\\delete.py"
+			],
+			[
+				"api",
+				"mamtools\\api.py"
+			],
+			[
+				"hotke",
+				"prefs\\model.hotkey"
+			],
+			[
+				"ut",
+				"mamqtkeys\\utils.py"
+			],
+			[
+				"walker",
+				"mamqtkeys\\walker.py"
+			],
+			[
+				"se",
+				"mamqtkeys\\sequence.py"
+			],
+			[
+				"mana",
+				"mamqtkeys\\manager.py"
+			],
+			[
+				"event",
+				"mamqtkeys\\events.py"
+			],
+			[
+				"hotkey",
+				"prefs\\model.hotkey"
+			],
+			[
+				"seq",
+				"mamqtkeys\\sequence.py"
+			],
+			[
+				"even",
+				"mamqtkeys\\events.py"
+			],
+			[
+				"ini",
+				"mamqkeys\\__init__.py"
+			],
+			[
+				"walk",
+				"mamqkeys\\walker.py"
+			],
+			[
+				"i",
+				"mamqkeys\\__init__.py"
+			],
+			[
+				"s",
+				"sequence.py"
+			],
+			[
+				"q",
+				"tests\\test_quickkeys.py"
+			],
+			[
+				".",
+				"mamqkeys\\.quickkeys"
+			],
+			[
+				".qui",
+				"mamqkeys\\.quickkeys"
+			],
+			[
+				"__",
+				"__init__.py"
+			],
+			[
+				"qui",
+				"quickkeys.py"
+			],
+			[
+				"te",
+				"test_quickkeys.py"
+			],
+			[
+				"tes",
+				"test_quickkeys.py"
+			],
+			[
+				"qyu",
+				"quickkeys.py"
+			],
+			[
+				"color",
+				"prefs\\modonaut.color"
+			],
+			[
+				"colo",
+				"prefs\\modonaut.color"
+			],
+			[
+				"read",
+				"README.md"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 750.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"G:\\dev\\maya\\maya-mampy\\maya-mampy.sublime-project"
+			]
+		],
+		"width": 570.0
+	},
+	"select_symbol":
+	{
+		"height": 467.0,
+		"last_filter": "list",
+		"selected_items":
+		[
+			[
+				"list",
+				"listVertIsland"
+			],
+			[
+				"convert",
+				"convert"
+			],
+			[
+				"conver",
+				"convert"
+			],
+			[
+				"is_",
+				"is_border"
+			],
+			[
+				"doMen",
+				"doMenuComponentSelection"
+			],
+			[
+				"fill",
+				"fill"
+			],
+			[
+				"select",
+				"selected"
+			],
+			[
+				"mou",
+				"MouseSequence"
+			],
+			[
+				"edit",
+				"edit"
+			],
+			[
+				"mouse",
+				"create_mouse_event"
+			],
+			[
+				"",
+				"Hotkey"
+			],
+			[
+				"hot",
+				"Hotkey"
+			],
+			[
+				"Hok",
+				"Hotkey"
+			],
+			[
+				"hotk",
+				"Hotkey"
+			],
+			[
+				"up",
+				"update"
+			],
+			[
+				"hotkey",
+				"Hotkey"
+			],
+			[
+				"key",
+				"KeySequence"
+			],
+			[
+				"Mous",
+				"MouseSequence"
+			],
+			[
+				"out",
+				"output"
+			],
+			[
+				"create",
+				"create_mouse_event"
+			],
+			[
+				"modi",
+				"modifiers"
+			]
+		],
+		"width": 450.0
+	},
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": false,
+	"side_bar_width": 188.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
