@@ -5,11 +5,11 @@ import maya.mel as mel
 from maya.api.OpenMaya import MFn
 
 import mampy
-from mampy.selections import SelectionList
+from mampy.dgcontainers import SelectionList
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 
 __all__ = ['unhide_all', 'visibility_toggle', 'isolate_selected',
@@ -17,6 +17,9 @@ __all__ = ['unhide_all', 'visibility_toggle', 'isolate_selected',
            'display_border_edges', 'display_map_border', 'display_textures',
            'display_xray', 'wireframe_shaded_toggle', 'wireframe_on_shaded',
            'wireframe_on_bg_objects', 'wireframe_backface_culling']
+
+
+# if(`isAttributeEditorRaised`){if(!`isChannelBoxVisible`){setChannelBoxVisible(1);} else {raiseChannelBox;}}else{openAEWindow;}
 
 
 class IsolateSelected(object):

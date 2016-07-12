@@ -6,7 +6,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 
 import mampy
-from mampy.nodes import Camera
+from mampy.dgnodes import Camera
 from mampy.utils import mvp
 
 logger = logging.getLogger(__name__)

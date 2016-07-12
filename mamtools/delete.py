@@ -6,7 +6,7 @@ import maya.api.OpenMaya as api
 
 import mampy
 from mampy.utils import undoable, repeatable
-from mampy.components import MeshPolygon
+from mampy.dgcomps import MeshPolygon
 
 logger = logging.getLogger(__name__)
 
