@@ -12,11 +12,11 @@ maya.
 __author__ = "Marcus Albertsson <marcus.arubertoson@gmail.com>"
 __copyright__ = 'Copyright 2016 Marcus Albertsson'
 __url__ = "http://github.com/arubertoson/mamtools"
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __license__ = "MIT"
 
 
-from mamtools import camera, contexts, delete, display, mesh, mesh_select, viewport_masks
+from mamtools import camera, delete, display, mesh
 
 
 def mel(command):
