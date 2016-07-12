@@ -1,21 +1,20 @@
 import sys
 import math
 import logging
-import functools
 
-from maya import cmds, mel
+from maya import cmds
 import maya.api.OpenMaya as api
 
 import mampy
-from mampy.utils import undoable, repeatable, get_outliner_index
+from mampy.utils import undoable, get_outliner_index
 from mampy.exceptions import InvalidSelection
-from mampy.selections import SelectionList
-from mampy.nodes import DagNode
+from mampy.dgcontainers import SelectionList
+from mampy.dgnodes import DagNode
 from mampy.datatypes import Line3D
-from mampy.components import (MeshPolygon, MeshVert, get_connected_components,
-                              get_outer_edges_in_loop)
+from mampy.dgcomps import MeshPolygon, MeshVert
+from mampy.computils import (get_connected_components, get_outer_edges_in_loop,
+                             get_vert_order_on_edge_row)
 
-from mamtools import contexts, delete, uv, mesh_select
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -25,7 +24,7 @@ EPS = sys.float_info.epsilon
 
 
 @undoable
-def detach_mesh(extract=False):
+def detach(extract=False):
     """
     Extracts or duplicat selected polygon faces.
     """
@@ -223,29 +222,6 @@ def spin_edge():
     cmds.select(list(s), r=True)
 
 
-def get_vert_order_on_edge_row(indices):
-    """
-    .. note:: Should probably be moved to mampy.
-    """
-    idx = 0
-    next_ = None
-    sorted_ = []
-    while indices:
-
-        edge = indices.pop(idx)
-        if next_ is None:
-            next_ = edge[-1]
-
-        sorted_.append(next_)
-        for i in indices:
-            if next_ in i:
-                idx = indices.index(i)
-                next_ = i[-1] if next_ == i[0] else i[0]
-                break
-
-    return sorted_
-
-
 def make_circle(mode=0):
     """
     Make circle from selection.
@@ -381,147 +357,5 @@ def make_circle(mode=0):
                     vert.translate(t=ac, ws=True)
 
 
-# CONTEXT SENSITIVE FUNCTIONS
-
-
-def merge():
-    """
-    Dispatches function call depending on selection type
-    """
-    s = mampy.selected()
-    if not s:
-        return logger.warn('Nothing Selected.')
-
-    obj = s[0]
-    t = obj.type
-    if obj.type in [api.MFn.kTransform]:
-        t = obj.get_shape().type
-
-    try:
-        {
-            api.MFn.kMeshVertComponent: functools.partial(delete.merge_verts, True),
-            api.MFn.kMeshPolygonComponent: delete.merge_faces,
-            api.MFn.kMeshEdgeComponent: delete.collapse,
-            api.MFn.kMesh: combine_separate,
-        }[t]()
-    except KeyError:
-        logger.warn('{} is not a valid type'.format(t))
-
-
-def bevel():
-    """
-    Bevel is a collection of functions usually performed when certain states
-    are fulfilled, such as: selection, border edge etc.
-    """
-    s = mampy.selected()
-    if not s:
-        return logger.warn('Nothing Selected.')
-
-    for comp in s.itercomps():
-        cmds.select(list(comp))
-
-        if comp.type == api.MFn.kMeshEdgeComponent:
-            if comp.is_border(comp.index):
-                contexts.extrude()
-            else:
-                contexts.bevel()
-        elif comp.type == api.MFn.kMeshPolygonComponent:
-            contexts.extrude()
-        elif comp.type == api.MFn.kMeshVertComponent:
-            contexts.extrude()
-
-
-def detach(extract=False):
-    """
-    Dispatches function call depening on selection type or type of panel
-    under cursor.
-    """
-    s = mampy.selected()
-    if not s:
-        return logger.warn('Nothing Selected.')
-
-    focused_panel = cmds.getPanel(wf=True)
-    if focused_panel.startswith('polyTexturePlacementPanel'):
-        uv.tear_off()
-    elif focused_panel.startswith('modelPanel'):
-        s = s[0]
-        if s.type == api.MFn.kMeshPolygonComponent:
-            detach_mesh(extract)
-        elif s.type in [api.MFn.kTransform]:
-            cmds.duplicate(rr=True)  # parentOnly=hierarchy)
-
-
-def get_border_loop_from_edge_index(index):
-    return set(sorted([int(i) for i in cmds.polySelect(q=True, edgeBorder=index)]))
-
-
-def get_border_loop_from_edge(component):
-    return set([
-        tuple(border for border in get_border_loop_from_edge_index(idx))
-        for idx in component.indices
-    ])
-
-
-def get_indices_sharing_edge_border(component):
-    """Get indices sharing border edge loop from component."""
-    edge_borders = SelectionList()
-    for border in get_border_loop_from_edge(component):
-        new_component = component.new()
-        for index in component.indices:
-            if index in border:
-                new_component.add(index)
-        edge_borders.append(new_component)
-    return edge_borders
-
-
-def get_border_edges_from_selection(edge_selection):
-    """Get border edges from selection and return a new selection list."""
-    border_edges = SelectionList()
-    for component in edge_selection.itercomps():
-        borders = component.new()
-        for index in component.indices:
-            if not component.is_border(index):
-                continue
-            borders.add(index)
-        if borders:
-            border_edges.append(borders)
-    return border_edges
-
-
-@undoable
-@repeatable
-def bridge():
-    selected = mampy.selected()
-    if not selected:
-        raise InvalidSelection('Nothing selected, select border edges.')
-    borders = get_border_edges_from_selection(selected)
-
-    for component in borders.itercomps():
-        if component.type == api.MFn.kMeshPolygonComponent:
-            bridge_face()
-        elif component.type == api.MFn.kMeshEdgeComponent:
-            borders = get_indices_sharing_edge_border(component)
-            for each in borders.itercomps():
-                cmds.select(list(each), r=True)
-                connected = get_connected_components(each)
-                if not len(component) > 1 or len(connected) > 1:
-                    cmds.polyBridgeEdge(divisions=0)
-                elif len(component) == 2 and len(connected) == 1:
-                    cmds.polyAppend(str(component.dagpath),
-                                    s=1, a=(component.index, component.indices[-1]))
-                else:
-                    mel.eval('polyPerformAction polyCloseBorder e 0;')
-
-    cmds.select(list(borders))
-
-
-@undoable
-def bridge_face():
-    faces = mampy.selected()
-    mesh_select.convert('edge')
-    cmds.delete(list(faces))
-    cmds.polyBridgeEdge(divisions=0)
-
-
 if __name__ == '__main__':
-    bridge_face()
+    pass
