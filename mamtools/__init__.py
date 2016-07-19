@@ -12,7 +12,7 @@ maya.
 __author__ = "Marcus Albertsson <marcus.arubertoson@gmail.com>"
 __copyright__ = 'Copyright 2016 Marcus Albertsson'
 __url__ = "http://github.com/arubertoson/mamtools"
-__version__ = "0.4.1"
+__version__ = "0.4.4"
 __license__ = "MIT"
 
 
