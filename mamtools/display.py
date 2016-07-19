@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
-__all__ = ['unhide_all', 'visibility_toggle', 'isolate_selected',
-           'subd_toggle', 'subd_level', 'display_edges', 'display_vertex',
+__all__ = ['unhide_all', 'visibility_toggle', 'isolate_selected', 'subd_toggle_all',
+           'subd_toggle_selected', 'subd_level', 'display_edges', 'display_vertex',
            'display_border_edges', 'display_map_border', 'display_textures',
            'display_xray', 'wireframe_shaded_toggle', 'wireframe_on_shaded',
            'wireframe_on_bg_objects', 'wireframe_backface_culling']
@@ -33,6 +33,12 @@ class IsolateSelected(object):
 
     def __init__(self):
         self.reset()
+
+    @staticmethod
+    def get_instance():
+        if IsolateSelected.instance is None:
+            IsolateSelected.instance = IsolateSelected()
+        return IsolateSelected.instance
 
     @property
     def isoset(self):
@@ -84,6 +90,13 @@ class IsolateSelected(object):
         self._panel = None
 
 
+def isolate_selected():
+    """
+    Toggles isolate selected.
+    """
+    IsolateSelected.get_instance().toggle()
+
+
 class SubDToggle(object):
     """SubDToggle class
 
@@ -92,69 +105,70 @@ class SubDToggle(object):
 
     instance = None
 
-    def __init__(self):
-        self._meshes = None
-        self._state = None
-        self._all = False
+    @staticmethod
+    def get_instance():
+        if SubDToggle.instance is None:
+            SubDToggle.instance = SubDToggle()
+        return SubDToggle.instance
 
     def all(self, off=False):
         """SubD toggle all meshes off or on."""
-        self._all = True
-        self._state = 3 if off else 0
-        self._meshes = self.get_meshes(all=True)
-        self._toggle()
+        for mesh in self.get_meshes(True):
+            cmds.displaySmoothness(str(mesh), po=3 if off else 0)
 
     def selected(self, hierarchy=False):
         """SubD toggle selected meshes."""
-        self._all = False
-        self._hierarchy = hierarchy
-        self._meshes = self.get_meshes(all=False)
-        self._toggle()
+        for mesh in self.get_meshes(False, hierarchy):
+            state = cmds.displaySmoothness(str(mesh), q=True, po=True).pop()
+            cmds.displaySmoothness(str(mesh), po=0 if state == 3 else 3)
+
+    def get_meshes(self, all=False, hierarchy=False):
+        if all:
+            return mampy.ls(type='mesh').iterdags()
+
+        if hierarchy:
+            selected = mampy.ls(sl=True, dag=True, type='mesh')
+        else:
+            selected = SelectionList()
+            for mesh in mampy.selected().iterdags():
+                shape = mesh.get_shape()
+                if shape is None:
+                    continue
+                selected.add(shape)
+
+        hilited = mampy.ls(hl=True, dag=True, type='mesh')
+        if hilited:
+            selected.extend(hilited)
+        return selected.iterdags()
 
     def level(self, level=1, all=True, hierarchy=False):
         """Change subd level on meshes."""
-        self._hierarchy = hierarchy
         if all:
-            meshes = self.get_meshes(all=True)
+            meshes = self.get_meshes(all=True, hierarchy=hierarchy)
         else:
-            meshes = self.get_meshes(all=False)
+            meshes = self.get_meshes(all=False, hierarchy=hierarchy)
 
-        for mesh in meshes.iterdags():
-            mesh.smoothLevel.set(mesh.smoothLevel.get() + level)
+        for mesh in meshes:
+            mesh['smoothLevel'] = mesh['smoothLevel'] + level
 
-    def get_meshes(self, all=True):
-        """Return all SubD meshes in scene."""
-        if all:
-            return mampy.ls(type='mesh')
-        else:
-            if self._hierarchy:
-                s = mampy.ls(sl=True, dag=True, type='mesh')
-            else:
-                s = SelectionList()
-                for i in mampy.selected().iterdags():
-                    shape = i.get_shape()
-                    if shape is None:
-                        continue
-                    s.add(shape)
 
-            # merge hilited
-            hilited = mampy.ls(hl=True, dag=True, type='mesh')
-            if hilited:
-                s.extend(hilited)
-            return s
+def subd_toggle_all(state=False):
+    SubDToggle.get_instance().all(state)
 
-    def _toggle(self):
-        """Toggle specified meshes."""
-        for mesh in self._meshes.iterdags():
-            try:
-                if self._all:
-                    logger.debug('doing all {}, {}'.format(self._all, self._state))
-                    cmds.displaySmoothness(str(mesh), po=self._state)
-                elif self._state is None or self._state:
-                    state = cmds.displaySmoothness(str(mesh), q=True, po=True)[0]
-                    cmds.displaySmoothness(str(mesh), po=0 if state == 3 else 3)
-            except AttributeError:
-                logger.warn('{} is of type: {}'.format(mesh, type(mesh)))
+
+def subd_toggle_selected(hierarchy=True):
+    """
+    Toggle subd display on meshes.
+    """
+    SubDToggle.get_instance().selected(hierarchy=hierarchy)
+
+
+def subd_level(level, all=False, hierarchy=True):
+    """
+    Change level of subd meshes.
+    """
+    subdtoggle = SubDToggle.get_instance()
+    subdtoggle.level(level) if all else subdtoggle.level(level, all, hierarchy)
 
 
 def is_model_panel(panel):
@@ -178,47 +192,7 @@ def visibility_toggle():
     """
     s = mampy.selected()
     for dag in s.iterdags():
-        dag.visibility.set(not(dag.visibility.get()))
-
-
-def isolate_selected():
-    """
-    Toggles isolate selected.
-    """
-    if IsolateSelected.instance is None:
-        IsolateSelected.instance = IsolateSelected()
-    IsolateSelected.instance.toggle()
-
-
-def subd_toggle(all=False, hierarchy=True, off=None):
-    """
-    Toggle subd display on meshes.
-    """
-    if SubDToggle.instance is None:
-        SubDToggle.instance = SubDToggle()
-
-    logger.debug('all state: {}'.format(all))
-    if all:
-        SubDToggle.instance.all(off)
-    else:
-        SubDToggle.instance.selected(hierarchy=hierarchy)
-
-
-def subd_level(level, all=False, hierarchy=True):
-    """
-    Change level of subd meshes.
-    """
-    if SubDToggle.instance is None:
-        SubDToggle.instance = SubDToggle()
-
-    if all:
-        SubDToggle.instance.level(level)
-    else:
-        SubDToggle.instance.level(
-            level,
-            all=all,
-            hierarchy=hierarchy
-        )
+        dag['visibility'] = not(dag.visibility)
 
 
 def display_edges(show_hard=True):
@@ -412,7 +386,7 @@ def view_script_editor(direction='bottom', floating=False):
         Create context menu for output window.
         """
         # context menu
-        output_win = cmds.cmdScrollFieldReporter(fst="")
+        output_win = cmds.cmdScrollFieldReporter(SCRIPT_OUTPUT_SCROLLFIELD, fst="")
         cmds.popupMenu(parent=output_win)
         cmds.menuItem(
             label='Clear Output',
@@ -456,6 +430,7 @@ def view_script_editor(direction='bottom', floating=False):
     # Constants
     SCRIPT_OUTPUT_WINDOW = 'MAM_SCRIPT_OUTPUT_WINDOW'
     SCRIPT_OUTPUT_DOCK = 'MAM_SCRIPT_OUTPUT_DOCK'
+    SCRIPT_OUTPUT_SCROLLFIELD = 'MAM_SCRIPT_OUTPUT_SCROLLFIELD'
     SCRIPT_EDITOR_WINDOW = 'scriptEditorPanel1Window'
     SCRIPT_EDITOR_PANE = 'scriptEditorPanel1'
 
@@ -515,4 +490,4 @@ def view_node_editor():
 
 
 if __name__ == '__main__':
-    view_script_editor(floating=True)
+    pass
