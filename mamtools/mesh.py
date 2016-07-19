@@ -10,10 +10,8 @@ from mampy.utils import undoable, get_outliner_index
 from mampy.exceptions import InvalidSelection
 from mampy.dgcontainers import SelectionList
 from mampy.dgnodes import DagNode
-from mampy.datatypes import Line3D
 from mampy.dgcomps import MeshPolygon, MeshVert
-from mampy.computils import (get_connected_components, get_outer_edges_in_loop,
-                             get_vert_order_on_edge_row)
+from mampy.computils import get_connected_components, get_vert_order_on_edge_row
 
 
 logger = logging.getLogger(__name__)
@@ -133,6 +131,7 @@ def combine_separate():
         cmds.select(list(new_dags), r=True)
 
 
+@undoable
 def flatten(averaged=True):
     """
     Flattens selection by averaged normal.
@@ -172,43 +171,7 @@ def flatten(averaged=True):
 
 
 @undoable
-def unbevel():
-    """
-    Unbevel beveled edges.
-
-    Select Edges along a bevel you want to unbevel. Make sure the edge is not
-    connected to another edge from another bevel. This will cause the script
-    to get confused.
-    """
-    s = mampy.selected()
-    for comp in s.itercomps():
-
-        cmds.select(str(comp.dagpath), r=True)
-        merge_list = SelectionList()
-
-        for c in get_connected_components(comp):
-            outer_edges, rest = get_outer_edges_in_loop(c)
-
-            edge1, edge2 = outer_edges
-            line1 = Line3D(edge1[0].points[0], edge1[1].points[0])
-            line2 = Line3D(edge2[0].points[0], edge2[1].points[0])
-            intersection_line = line1.shortest_line_to_other(line2)
-
-            rest.translate(t=intersection_line.sum() * 0.5, ws=True)
-            merge_list.append(rest)
-
-        # Merge components on object after all operation are done. Mergin
-        # before will change vert ids and make the script break
-        cmds.polyMergeVertex(list(merge_list), distance=0.001, ch=False)
-
-    # Restore selection
-    cmds.selectMode(component=True)
-    cmds.hilite([str(i) for i in s.iterdags()], r=True)
-    cmds.select(cl=True)
-
-
-@undoable
-def spin_edge():
+def spin_edge(offset=1):
     """
     Spin all selected edges.
 
@@ -217,7 +180,7 @@ def spin_edge():
     s = mampy.selected()
     for comp in s.itercomps():
         edge = comp.to_edge(internal=True)
-        cmds.polySpinEdge(list(edge), offset=-1, ch=False)
+        cmds.polySpinEdge(list(edge), offset=offset, ch=False)
     cmds.select(cl=True)
     cmds.select(list(s), r=True)
 
