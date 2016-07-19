@@ -5,8 +5,11 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as api
 
 import mampy
+from mampy.datatypes import Line3D
+from mampy.dgcontainers import SelectionList
 from mampy.utils import undoable, repeatable
 from mampy.dgcomps import MeshPolygon
+from mampy.computils import get_outer_edges_in_loop, get_connected_components
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +75,7 @@ def merge_faces():
         return logger.warn('Invalid Selection, must have 2 or more polygons'
                            'selected.')
 
-    faces = mampy.SelectionList()
+    faces = SelectionList()
     for comp in s.itercomps():
         border_verts = comp.to_vert(border=True)
         internal_edges = comp.to_edge(internal=True)
@@ -92,13 +95,14 @@ def merge_faces():
 @repeatable
 def merge_verts(move):
     """Merges verts to first selection."""
-    if move:
-        s = mampy.ordered_selection(fl=True)
-        pos = s[0].points[0]
-
+    s = mampy.ordered_selection(fl=True)
+    if move or len(s) == 2:
+        if not move:
+            v1, v2 = s.itercomps()
+            pos = (v1.points.pop() + api.MVector(v2.points.pop())) / len(s)
+        else:
+            pos = s[0].points[0]
         cmds.xform(list(s), ws=True, t=list(pos)[:3])
-    else:
-        s = mampy.selected()
     cmds.polyMergeVertex(list(s), distance=0.001, ch=True)
 
 
@@ -114,6 +118,42 @@ def transforms(translate=False, rotate=False, scale=False):
     cmds.makeIdentity(transforms, t=translate, r=rotate, s=scale, apply=True)
 
 
-if __name__ == '__main__':
-    merge_faces()
+@undoable
+@repeatable
+def unbevel():
+    """
+    Unbevel beveled edges.
 
+    Select Edges along a bevel you want to unbevel. Make sure the edge is not
+    connected to another edge from another bevel. This will cause the script
+    to get confused.
+    """
+    s = mampy.selected()
+    for comp in s.itercomps():
+
+        cmds.select(list(comp), r=True)
+        merge_list = SelectionList()
+
+        for c in get_connected_components(comp).itercomps():
+            outer_edges, rest = get_outer_edges_in_loop(c)
+
+            edge1, edge2 = list(outer_edges.itercomps())
+            line1 = Line3D(edge1[0].points[0], edge1[1].points[0])
+            line2 = Line3D(edge2[0].points[0], edge2[1].points[0])
+            intersection_line = line1.shortest_line_to_other(line2)
+
+            rest.translate(t=intersection_line.sum() * 0.5, ws=True)
+            merge_list.append(rest)
+
+        # Merge components on object after all operation are done. Mergin
+        # before will change vert ids and make the script break
+        cmds.polyMergeVertex(list(merge_list), distance=0.001, ch=False)
+
+    # Restore selection
+    cmds.selectMode(component=True)
+    cmds.hilite([str(i) for i in s.iterdags()], r=True)
+    cmds.select(cl=True)
+
+
+if __name__ == '__main__':
+    pass
