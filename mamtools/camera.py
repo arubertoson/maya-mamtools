@@ -6,7 +6,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 
 import mampy
-from mampy.dgnodes import Camera
+from mampy.dgnodes import DagNode, Camera
 from mampy.utils import mvp
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ __all__ = ['viewport_snap', 'fit_selection', 'maximize_viewport_toggle']
 fit_view_history = mampy.utils.HistoryList()
 
 
-def fit_selection(mode=None, add=True):
+def fit_selection(fit_type='selected', mode=None, add=True):
     """
     Fit selection with history. For easy jumping between position on a mesh
     while changing selection.
@@ -30,19 +30,18 @@ def fit_selection(mode=None, add=True):
     elif mode == 'next':
         fit_view_history.jump_forward(s)
         cmds.select(fit_view_history.current_element, r=True)
-    elif mode == 'back':
+    elif mode == 'prev':
         fit_view_history.jump_back(s)
         cmds.select(fit_view_history.current_element, r=True)
     elif mode == 'last':
-        print 'last'
         last_selected = mampy.ordered_selection()
         fit_view_history.push_selection(last_selected[-1])
         cmds.select(list(last_selected[-1]), r=True)
-        cmds.viewFit(f=0.75)
+        mel.eval('fitPanel -{}'.format(fit_type))
         cmds.select(list(s))
         return
 
-    cmds.viewFit(f=0.75)
+    mel.eval('fitPanel -{}'.format(fit_type))
     if mode is not None and add:
         cmds.select(list(s), add=True)
 
@@ -54,25 +53,25 @@ def viewport_snap(fit=True):
     if 'bottom' not in cameras:
         top = Camera('top')
 
-        new_camera = mampy.DagNode(cmds.duplicate('top', name='bottom').pop())
+        new_camera = DagNode(cmds.duplicate('top', name='bottom').pop())
         new_camera['translateY'] = top.translateY * -1
         new_camera['rotateX'] = top.rotateX * -1
 
     if 'back' not in cameras:
         back = Camera('front')
 
-        new_camera = mampy.DagNode(cmds.duplicate('front', name='back').pop())
+        new_camera = DagNode(cmds.duplicate('front', name='back').pop())
         new_camera['translateZ'] = back.translateZ * -1
         new_camera['rotateY'] = -180
 
     if 'left' not in cameras:
         side = Camera('side')
 
-        new_camera = mampy.DagNode(cmds.duplicate('side', name='left').pop())
+        new_camera = DagNode(cmds.duplicate('side', name='left').pop())
         new_camera['translateX'] = side.translateX * -1
         new_camera['rotateY'] = side.rotateY * -1
 
-    view = mampy.Viewport.active()
+    view = mvp.Viewport.active()
     camera = Camera(view.camera)
     if not camera.name.startswith('persp'):
         return cmds.lookThru(view.panel, 'persp')
@@ -114,10 +113,10 @@ def reset_camera(camera=None):
 
     rotP = cmds.xform(camera, q=True, ws=True, rp=True)
     cmds.xform(camera, ws=True, t=[rotP[0] * -1, rotP[1] * -1, rotP[2] * -1])
-    cmds.makeIdentity(apply=True, t=1, r=1, s=1)
+    cmds.makeIdentity(camera, t=1, r=1, s=1, apply=True)
 
     cmds.xform(camera, ws=True, t=[trn[0], trn[1], trn[2]])
-    cmds.xform(camera, os=True, ro=[rot[0], rot[1], rot[2]])
+    cmds.xform(camera, os=True, ro=[rot[0], rot[1], 0])
 
 if __name__ == '__main__':
-    reset_camera()
+    pass
