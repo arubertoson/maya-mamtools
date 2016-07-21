@@ -61,6 +61,9 @@ class IsolateSelected(object):
             isoset = cmds.sets(self.isoset, q=True)
             selset = cmds.ls(sl=True)
             selset.extend(cmds.ls(hl=True))
+            if any([each is None for each in [isoset, selset]]):
+                cmds.isolateSelect(self.panel, state=False)
+                self.reset()
             if set(isoset) == set(selset) or not cmds.ls(sl=True):
                 cmds.isolateSelect(self.panel, state=False)
                 self.reset()
@@ -119,7 +122,10 @@ class SubDToggle(object):
     def selected(self, hierarchy=False):
         """SubD toggle selected meshes."""
         for mesh in self.get_meshes(False, hierarchy):
-            state = cmds.displaySmoothness(str(mesh), q=True, po=True).pop()
+            try:
+                state = cmds.displaySmoothness(str(mesh), q=True, po=True).pop()
+            except AttributeError:
+                pass
             cmds.displaySmoothness(str(mesh), po=0 if state == 3 else 3)
 
     def get_meshes(self, all=False, hierarchy=False):
