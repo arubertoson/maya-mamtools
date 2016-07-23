@@ -1,10 +1,13 @@
 import math
 import logging
-from maya.api import OpenMaya as api
+import itertools
 
 from maya import cmds
+from maya.api import OpenMaya as api
 
 import mampy
+from mampy.packages import mvp
+from mampy.dgnodes import Camera
 from mampy.utils import undoable
 
 logger = logging.getLogger(__name__)
@@ -82,37 +85,217 @@ def get_pane_size(pane):
     """
     return [cmds.control(pane, q=True, **{p: True}) for p in ['w', 'h']]
 
+
+def get_world_vectors():
+    matrix = chunks(list(api.MMatrix()), 4)
+    xyz = [api.MVector(i[:-1]) for i in list(matrix)[:-1]]
+    axes = []
+    for idx, vec in enumerate(itertools.repeat(xyz, 2)):
+        axes.extend([v if idx == 1 else (v * -1) for v in vec])
+    return axes
+
+
+def chunks(l, n):
+    """ Yield successive n-sized chunks from l.
+    """
+    for i in xrange(0, len(l), n):
+        yield l[i:i + n]
+
+
+class InvalidManipType(Exception):
+    """Raise when invalid manipulator is encountered."""
+
+
+class BaseManip(object):
+
+    manip_names = {
+        'RotateSupercontext': 'Rotate',
+        'moveSuperContext': 'Move',
+        'scaleSuperContext': 'Scale',
+    }
+    world_vectors = get_world_vectors()
+    type_ = None
+
+    def __init__(self):
+        self._name = None
+
+    def cmd(self, **kwargs):
+        return {
+            'RotateSupercontext': cmds.manipRotateContext,
+            'moveSuperContext': cmds.manipMoveContext,
+            'scaleSuperContext': cmds.manipScaleContext,
+        }[self.type](self.name, **kwargs)
+
+    @property
+    def is_active(self):
+        return cmds.currentCtx() == self.type
+
+    @property
+    def mode(self):
+        return {
+            0: 'object',
+            1: 'parent',
+            2: 'world',
+            4: 'object',
+            5: 'live',
+            6: 'custom',
+            9: 'custom',
+        }[self.cmd(q=True, mode=True)]
+
+    @property
+    def orient(self):
+        return api.MEulerRotation(self.cmd(q=True, orientAxes=True))
+
+    @property
+    def position(self):
+        return self.cmd(q=True, position=True)
+
+    @property
+    def type(self):
+        if self.type_ is None:
+            raise NotImplemented()
+        return self.type_
+
+    @property
+    def name(self):
+        if self._name is None:
+            self._name = self.manip_names[self.type]
+        return self._name
+
+    def set_active_handle(self, handle):
+        self.cmd(e=True, currentActiveHandle=handle)
+
+
+class MoveManip(BaseManip):
+    type_ = 'moveSuperContext'
+
+
+class ScaleManip(BaseManip):
+    type_ = 'scaleSuperContext'
+
+
+class RotateManip(BaseManip):
+    type_ = 'RotateSupercontext'
+
+    @property
+    def mode(self):
+        return {
+            0: 'object',
+            1: 'world',
+            2: 'object',
+            3: 'custom',
+            9: 'custom',
+        }[self.cmd(q=True, mode=True)]
+
+
+def set_active_axes_to_view(manip=0, axis_mode=0):
+    manip = {
+        0: MoveManip,
+        1: RotateManip,
+        2: ScaleManip,
+    }[manip]()
+
+    offset = get_vector_offset(manip)
+    camera = Camera(mvp.Viewport.active().camera)
+    main_vector = camera.get_view_direction()
+
+    vector_map = get_axis_vector_map(main_vector, offset, mode=axis_mode)
+    closest_match = max(vector_map, key=vector_map.get)
+
+    manip.set_active_handle(closest_match)
+
+
+def set_active_axes(axis='center'):
+    ctx = cmds.currentCtx()
+    types = {cls.type_: cls for cls in BaseManip.__subclasses__()}
+    if ctx not in types:
+        raise InvalidManipType('Supports: Move, scale and rotate super context.')
+
+    manip = types[ctx]()
+    dispatch = {
+        'x': 0,
+        'y': 1,
+        'z': 2,
+        'center': 3,
+        'xy': 4,
+        'yz': 5,
+        'xz': 6,
+    }[axis]
+    manip.set_active_handle(dispatch)
+
+
+def get_vector_offset(manip):
+    """
+    :: todo ..
+        implement parent
+        implement live
+    """
+    try:
+        offset = {
+            'custom': manip.orient.asMatrix,
+            'object': get_object_vector,
+            # 'parent': get_parent_object,
+            # 'live': get_live_object,
+        }[manip.mode]()
+    except KeyError:
+        offset = api.MMatrix()
+    return offset
+
+
+def get_object_vector():
+    selected = mampy.selected().iterdags().next()
+    transform = selected.get_transform()
+    rotation = transform._mfntrans.rotation()
+    return rotation.asMatrix()
+
+
+def get_axis_vector_map(view_vec, offset, mode=0):
+    world_vectors = get_world_vectors()
+    camera_vector = {}
+    for v in world_vectors:
+        axis = {
+            0: get_axis_from_vector,
+            1: get_perpenticular_axis_from_vector,
+            2: get_perpenticular_axes_from_vector,
+        }[mode](v)
+        view_angle = view_vec * (v * offset)
+        if axis in camera_vector:
+            if view_angle > camera_vector[axis]:
+                camera_vector[axis] = view_angle
+        else:
+            camera_vector[axis] = view_angle
+    return camera_vector
+
+
+def get_axis_from_vector(vec):
+    for idx, n in enumerate(vec):
+        if abs(n):
+            return {
+                0: 0,  # x
+                1: 1,  # y
+                2: 2,  # z
+            }[idx]
+
+
+def get_perpenticular_axis_from_vector(vec):
+    for idx, n in enumerate(vec):
+        if abs(n):
+            return {
+                0: 2,  # x => z
+                1: 0,  # y => x
+                2: 1,  # z => y
+            }[idx]
+
+
+def get_perpenticular_axes_from_vector(vec):
+    for idx, n in enumerate(vec):
+        if abs(n):
+            return {
+                0: 5,  # x => yz
+                1: 6,  # y => xz
+                2: 4,  # z => xy
+            }[idx]
+
+
 if __name__ == '__main__':
-    pass
-    # select_mode_toggle()
-    # print get_pane_size(cmds.getPanel(underPointer=True))
-
-
-# def uvShellHardEdges():
-#     '''
-#     Sets uv border edges on a mesh has hard, and everythign else as soft.
-#     '''
-#     objList = cmds.ls(sl=True, o=True)
-#     finalBorder = []
-
-#     for subObj in objList:
-#         cmds.select(subObj, r=True)
-#         cmds.polyNormalPerVertex(ufn=True)
-#         cmds.polySoftEdge(subObj, a=180, ch=1)
-#         cmds.select(subObj + '.map[*]', r=True)
-
-#         polySelectBorderShell(borderOnly=True)
-
-#         uvBorder = cmds.polyListComponentConversion(te=True, internal=True)
-#         uvBorder = cmds.ls(uvBorder, fl=True)
-
-#         for curEdge in uvBorder:
-#             edgeUVs = cmds.polyListComponentConversion(curEdge, tuv=True)
-#             edgeUVs = cmds.ls(edgeUVs, fl=True)
-
-#             if len(edgeUVs) > 2:
-#                 finalBorder.append(curEdge)
-
-#         cmds.polySoftEdge(finalBorder, a=0, ch=1)
-
-#     cmds.select(objList)
+    set_active_axes()

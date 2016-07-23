@@ -20,9 +20,14 @@ import traceback
 import maya
 from maya import cmds
 import mampy
-from mamtools import camera, delete, display, mesh, sort_outliner
+from mamtools import camera, delete, display, mesh, sort_outliner, pivots
+
+import maya.OpenMaya as OpenMaya
 
 optionVar = mampy.optionVar()
+
+
+lasso_callback = None
 
 
 def mel(command):
@@ -47,20 +52,62 @@ def translate_map(angle):
 
 
 def lasso():
+    global lasso_callback
+    lasso_callback = OpenMaya.MEventMessage.addEventCallback("SelectionChanged", lasso_release)
     tool = 'MAM_LASSO'
-    if cmds.lassoContext(tool, q=True, exists=True):
-        cmds.setToolTo(tool)
-    else:
+    if not cmds.lassoContext(tool, q=True, exists=True):
         cmds.lassoContext(tool)
+    cmds.setToolTo(tool)
+
+
+def lasso_release(*args):
+    try:
+        OpenMaya.MEventMessage.removeCallback(lasso_callback)
+    except RuntimeError:
+        pass
+    cmds.setToolTo('selectSuperContext')
+
+
+def dolly():
+    tool = 'MAM_DOLLY'
+    if not cmds.dollyCtx(tool, q=True, exists=True):
+        cmds.dollyCtx(tool, ac=True, ld=True, cd=False, dtc=True)
+    cmds.setToolTo(tool)
+
+
+def dolly_release(*args):
+    # import maya.mel as mel
+    # mel.eval('SelectToolOptionsMarkingMenu')
+    cmds.setToolTo('selectSuperContext')
+
+
+def track():
+    tool = 'MAM_TRACK'
+    if not cmds.trackCtx(tool, q=True, exists=True):
+        cmds.trackCtx(tool)
+    cmds.setToolTo(tool)
+
+
+def track_release():
+    print('yeaaah')
+    # cmds.setToolTo('selectSuperContext')
+    # mel('dR_updateToolSettings')
 
 
 def dragger_press(tool):
     optionVar['MAM_CURRENT_CTX'] = cmds.currentCtx()
     {
         'lasso': lasso,
+        'dolly': dolly,
+        'track': track,
     }[tool]()
 
 
 def dragger_release():
+    # OpenMaya.MEventMessage.removeCallback(optionVar['MAM_CALLBACK'])
     cmds.setToolTo(optionVar['MAM_CURRENT_CTX'])
-    cmds.refresh(f=True)
+
+
+if __name__ == '__main__':
+    pass
+
