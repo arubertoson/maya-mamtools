@@ -5,176 +5,19 @@ import maya.mel as mel
 from maya.api.OpenMaya import MFn
 
 import mampy
-from mampy.dgcontainers import SelectionList
 
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
-__all__ = ['unhide_all', 'visibility_toggle', 'isolate_selected', 'subd_toggle_all',
-           'subd_toggle_selected', 'subd_level', 'display_edges', 'display_vertex',
+__all__ = ['unhide_all', 'visibility_toggle', 'display_edges', 'display_vertex',
            'display_border_edges', 'display_map_border', 'display_textures',
            'display_xray', 'wireframe_shaded_toggle', 'wireframe_on_shaded',
            'wireframe_on_bg_objects', 'wireframe_backface_culling']
 
 
 # if(`isAttributeEditorRaised`){if(!`isChannelBoxVisible`){setChannelBoxVisible(1);} else {raiseChannelBox;}}else{openAEWindow;}
-
-
-class IsolateSelected(object):
-    """IsolateSelected class
-
-    Additional functionality for standard isolate selection. Will isolate again
-    if selection has changed.
-    """
-
-    instance = None
-
-    def __init__(self):
-        self.reset()
-
-    @staticmethod
-    def get_instance():
-        if IsolateSelected.instance is None:
-            IsolateSelected.instance = IsolateSelected()
-        return IsolateSelected.instance
-
-    @property
-    def isoset(self):
-        if self._isoset is None or self._isoset == '':
-            self._isoset = cmds.isolateSelect(self.panel, q=True, vo=True)
-        return self._isoset
-
-    @property
-    def panel(self):
-        if self._panel is None:
-            self._panel = cmds.getPanel(withFocus=True)
-        return self._panel
-
-    @property
-    def state(self):
-        return cmds.isolateSelect(self.panel, q=True, state=True)
-
-    def toggle(self):
-        if self.state:
-            isoset = cmds.sets(self.isoset, q=True)
-            selset = cmds.ls(sl=True)
-            selset.extend(cmds.ls(hl=True))
-            if any([each is None for each in [isoset, selset]]):
-                cmds.isolateSelect(self.panel, state=False)
-                self.reset()
-            if set(isoset) == set(selset) or not cmds.ls(sl=True):
-                cmds.isolateSelect(self.panel, state=False)
-                self.reset()
-                return
-            else:
-                return self.update()
-
-        cmds.isolateSelect(self.panel, state=not(self.state))
-        if self.state:
-            self.update()
-        else:
-            self.reset()
-
-    def update(self):
-        try:
-            cmds.sets(clear=self.isoset)
-        except TypeError:
-            pass
-        finally:
-            cmds.isolateSelect(self.panel, addSelected=True)
-            hl = cmds.ls(hl=True)
-            if hl:
-                cmds.sets(hl, addElement=self.isoset)
-
-    def reset(self):
-        self._isoset = None
-        self._panel = None
-
-
-def isolate_selected():
-    """
-    Toggles isolate selected.
-    """
-    IsolateSelected.get_instance().toggle()
-
-
-class SubDToggle(object):
-    """SubDToggle class
-
-    Clas for subd toggle functionality.
-    """
-
-    instance = None
-
-    @staticmethod
-    def get_instance():
-        if SubDToggle.instance is None:
-            SubDToggle.instance = SubDToggle()
-        return SubDToggle.instance
-
-    def all(self, off=False):
-        """SubD toggle all meshes off or on."""
-        for mesh in self.get_meshes(True):
-            cmds.displaySmoothness(str(mesh), po=3 if off else 0)
-
-    def selected(self, hierarchy=False):
-        """SubD toggle selected meshes."""
-        for mesh in self.get_meshes(False, hierarchy):
-            try:
-                state = cmds.displaySmoothness(str(mesh), q=True, po=True).pop()
-            except AttributeError:
-                pass
-            cmds.displaySmoothness(str(mesh), po=0 if state == 3 else 3)
-
-    def get_meshes(self, all=False, hierarchy=False):
-        if all:
-            return mampy.ls(type='mesh').iterdags()
-
-        if hierarchy:
-            selected = mampy.ls(sl=True, dag=True, type='mesh')
-        else:
-            selected = SelectionList()
-            for mesh in mampy.selected().iterdags():
-                shape = mesh.get_shape()
-                if shape is None:
-                    continue
-                selected.add(shape)
-
-        hilited = mampy.ls(hl=True, dag=True, type='mesh')
-        if hilited:
-            selected.extend(hilited)
-        return selected.iterdags()
-
-    def level(self, level=1, all=True, hierarchy=False):
-        """Change subd level on meshes."""
-        if all:
-            meshes = self.get_meshes(all=True, hierarchy=hierarchy)
-        else:
-            meshes = self.get_meshes(all=False, hierarchy=hierarchy)
-
-        for mesh in meshes:
-            mesh['smoothLevel'] = mesh['smoothLevel'] + level
-
-
-def subd_toggle_all(state=False):
-    SubDToggle.get_instance().all(state)
-
-
-def subd_toggle_selected(hierarchy=True):
-    """
-    Toggle subd display on meshes.
-    """
-    SubDToggle.get_instance().selected(hierarchy=hierarchy)
-
-
-def subd_level(level, all=False, hierarchy=True):
-    """
-    Change level of subd meshes.
-    """
-    subdtoggle = SubDToggle.get_instance()
-    subdtoggle.level(level) if all else subdtoggle.level(level, all, hierarchy)
 
 
 def is_model_panel(panel):
