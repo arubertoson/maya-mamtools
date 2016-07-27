@@ -38,6 +38,7 @@ def delete(cv=False):
             cmds.polyDelVertex(list(comp), ch=False)
         else:
             cmds.delete(str(comp), ch=False)
+    cmds.select(cl=True)
 
 
 @repeatable
