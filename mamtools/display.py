@@ -4,7 +4,12 @@ import maya.cmds as cmds
 import maya.mel as mel
 from maya.api.OpenMaya import MFn
 
+
+from PySide.QtGui import QDockWidget
+
 import mampy
+from mampy.pyside.utils import get_maya_main_window
+
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +22,60 @@ __all__ = ['unhide_all', 'visibility_toggle', 'display_edges', 'display_vertex',
            'wireframe_on_bg_objects', 'wireframe_backface_culling']
 
 
-# if(`isAttributeEditorRaised`){if(!`isChannelBoxVisible`){setChannelBoxVisible(1);} else {raiseChannelBox;}}else{openAEWindow;}
+def toggle_default_material():
+    current_panel = cmds.getPanel(withFocus=True)
+    state = cmds.modelEditor(current_panel, q=True, useDefaultMaterial=True)
+    cmds.modelEditor(current_panel, e=True, useDefaultMaterial=not(state))
+
+
+def toggle_lights(lights=None):
+    current_panel = cmds.getPanel(withFocus=True)
+    if lights:
+        cmds.modelEditor(current_panel, e=True, displayLights=lights)
+    else:
+        state = cmds.modelEditor(current_panel, q=True, displayLights=True)
+        result = 'all' if not state == 'all' else 'default'
+        cmds.modelEditor(current_panel, e=True, displayLights=result)
+
+
+def toggle_AA():
+    state = cmds.getAttr('hardwareRenderingGlobals.multiSampleEnable')
+    cmds.setAttr('hardwareRenderingGlobals.multiSampleEnable', not(state))
+
+
+def toggle_occlusion():
+    state = cmds.getAttr('hardwareRenderingGlobals.ssaoEnable')
+    cmds.setAttr('hardwareRenderingGlobals.ssaoEnable', not(state))
+
+
+def toggle_raised_dock():
+    main_window = get_maya_main_window()
+    window_main_docks = sorted([
+        'Tool Settings',
+        'Modeling Toolkit',
+        'Attribute Editor',
+        'Channel Box / Layer Editor'
+    ])
+    print window_main_docks
+    widgets = {}
+    for dock in main_window.findChildren(QDockWidget):
+        title = dock.windowTitle()
+        if title not in window_main_docks:
+            continue
+        if dock.isVisible():
+            widgets[title] = dock
+        else:
+            window_main_docks.remove(title)
+
+    for k, i in widgets.iteritems():
+        if not i.widget().visibleRegion().isEmpty():
+            idx = window_main_docks.index(k)
+
+    try:
+        dock_widget = widgets[window_main_docks[idx + 1]]
+    except IndexError:
+        dock_widget = widgets[window_main_docks[0]]
+    dock_widget.raise_()
 
 
 def is_model_panel(panel):
@@ -108,7 +166,7 @@ def display_xray():
             cmds.displaySurface(str(shape), xRay=not(state.pop()))
 
 
-def wireframe_shaded_toggle():
+def shaded_toggle():
     """
     Toggles between wireframe and shaded on objects.
     """
@@ -179,7 +237,7 @@ def view_outliner(floating=False):
     DOCK_CONTROL_OUTLINER = 'MAM_DOCK_CONTROL_OUTLINER'
 
     if not cmds.paneLayout(TABLAYOUT, q=True, ex=True):
-        cmds.paneLayout(TABLAYOUT, p=mel.eval('$tmp = $gMainWindow'))
+        cmds.paneLayout(TABLAYOUT, p='viewPanes')  # mel.eval('$tmp = $gMainWindow'))
 
     # Creat or show outliner.
     if not cmds.dockControl(DOCK_CONTROL_OUTLINER, q=True, ex=True):
@@ -305,38 +363,5 @@ def view_render():
         cmds.scriptedPanel(panel, e=True, tearOff=True)
 
 
-def view_hypershader():
-    panel_window = 'hyperShadePanel1Window'
-    if cmds.window(panel_window, q=True, exists=True):
-        cmds.deleteUI(panel_window, window=True)
-    else:
-        panel = cmds.getPanel(withLabel='Hypershade')
-        cmds.scriptedPanel(panel, e=True, tearOff=True)
-
-
-def view_uv_editor():
-    panel_window = 'uvTextureEditor'
-    if cmds.window(panel_window, q=True, exists=True):
-        cmds.deleteUI(panel_window, window=True)
-    else:
-        mel.eval('NightshadeUVEditor')
-
-
-def view_namespace_editor():
-    panel_window = 'namespaceEditor'
-    if cmds.window(panel_window, q=True, exists=True):
-        cmds.deleteUI(panel_window, window=True)
-    else:
-        mel.eval(panel_window)
-
-
-def view_hypergraph():
-    mel.eval('HypergraphDGWindow')
-
-
-def view_node_editor():
-    mel.eval('NodeEditorWindow;')
-
-
 if __name__ == '__main__':
-    pass
+    toggle_raised_dock()
