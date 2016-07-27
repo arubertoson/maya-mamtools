@@ -7,8 +7,9 @@ from maya.api import OpenMaya as api
 
 import mampy
 from mampy.packages import mvp
+from mampy.dgcomps import Component
 from mampy.dgnodes import Camera
-from mampy.utils import undoable
+from mampy.utils import undoable, get_outliner_index
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def bake_pivot():
     """
     s = mampy.ordered_selection(tr=True, l=True)
     dag = s.pop(len(s) - 1)
-    out_idx = mampy.get_outliner_index(dag)
+    out_idx = get_outliner_index(dag)
     parent = dag.get_parent()
 
     # Get manipulator information
@@ -141,6 +142,10 @@ class BaseManip(object):
             6: 'custom',
             9: 'custom',
         }[self.cmd(q=True, mode=True)]
+
+    @property
+    def active_axis(self):
+        return self.cmd(q=True, currentActiveHandle=True)
 
     @property
     def orient(self):
@@ -297,5 +302,32 @@ def get_perpenticular_axes_from_vector(vec):
             }[idx]
 
 
+def scale_to_zero():
+    piv = ScaleManip()
+    scalar = [1, 1, 1]
+    try:
+        scalar[piv.active_axis] = 0
+    except IndexError:
+        return
+    cmds.scale(*scalar, pivot=piv.position)
+
+
+def scale_mirror():
+    piv = ScaleManip()
+
+    sel = mampy.selected()[0]
+    if isinstance(sel, Component):
+        scalar = [1, 1, 1]
+    else:
+        scalar = cmds.xform(str(sel), q=True, r=True, scale=True)
+
+    try:
+        value = scalar[piv.active_axis]
+        scalar[piv.active_axis] = value * -1
+    except IndexError:
+        return
+    cmds.scale(*scalar, pivot=piv.position)
+
+
 if __name__ == '__main__':
-    set_active_axes()
+    scale_mirror()
