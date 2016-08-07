@@ -211,12 +211,11 @@ def set_active_axes_to_view(manip=0, axis_mode=0):
 
 
 def set_active_axes(axis='center'):
-    ctx = cmds.currentCtx()
-    types = {cls.type_: cls for cls in BaseManip.__subclasses__()}
-    if ctx not in types:
-        raise InvalidManipType('Supports: Move, scale and rotate super context.')
-
-    manip = types[ctx]()
+    try:
+        ctx = cmds.currentCtx()
+        manip = {cls.type_: cls for cls in BaseManip.__subclasses__()}[ctx]()()
+    except KeyError:
+        return logger.warn('Supports move, scale and rotate super context')
     dispatch = {
         'x': 0,
         'y': 1,
