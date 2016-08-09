@@ -213,7 +213,7 @@ def set_active_axes_to_view(manip=0, axis_mode=0):
 def set_active_axes(axis='center'):
     try:
         ctx = cmds.currentCtx()
-        manip = {cls.type_: cls for cls in BaseManip.__subclasses__()}[ctx]()()
+        manip = {cls.type_: cls for cls in BaseManip.__subclasses__()}[ctx]()
     except KeyError:
         return logger.warn('Supports move, scale and rotate super context')
     dispatch = {
