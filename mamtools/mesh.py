@@ -11,7 +11,7 @@ from mampy.exceptions import InvalidSelection
 from mampy.dgcontainers import SelectionList
 from mampy.dgnodes import DagNode
 from mampy.dgcomps import MeshPolygon, MeshVert
-from mampy.computils import get_connected_components, get_vert_order_on_edge_row
+from mampy.computils import get_vert_order_on_edge_row
 
 
 logger = logging.getLogger(__name__)
@@ -196,8 +196,7 @@ def make_circle(mode=0):
     s = mampy.selected()
     for comp in s.itercomps():
 
-        connected = get_connected_components(comp)
-        for con in connected:
+        for con in comp.get_connected():
             edges = con.to_edge(border=True)
             indices = [edges.mesh.getEdgeVertices(i) for i in edges.indices]
             vert_row = get_vert_order_on_edge_row(indices)

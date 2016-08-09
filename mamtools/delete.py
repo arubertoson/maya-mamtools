@@ -9,7 +9,7 @@ from mampy.datatypes import Line3D
 from mampy.dgcontainers import SelectionList
 from mampy.utils import undoable, repeatable
 from mampy.dgcomps import MeshPolygon
-from mampy.computils import get_outer_edges_in_loop, get_connected_components
+from mampy.computils import get_outer_edges_in_loop
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ def unbevel():
         cmds.select(list(comp), r=True)
         merge_list = SelectionList()
 
-        for c in get_connected_components(comp).itercomps():
+        for c in comp.get_connected():
             outer_edges, rest = get_outer_edges_in_loop(c)
 
             edge1, edge2 = list(outer_edges.itercomps())
@@ -157,4 +157,4 @@ def unbevel():
 
 
 if __name__ == '__main__':
-    pass
+    unbevel()
