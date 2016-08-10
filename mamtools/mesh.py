@@ -8,9 +8,9 @@ import maya.api.OpenMaya as api
 import mampy
 from mampy.utils import undoable, get_outliner_index
 from mampy.exceptions import InvalidSelection
-from mampy.dgcontainers import SelectionList
-from mampy.dgnodes import DagNode
-from mampy.dgcomps import MeshPolygon, MeshVert
+from mampy.containers import SelectionList
+from mampy.nodes import DagNode
+from mampy.comps import MeshPolygon, MeshVert
 from mampy.computils import get_vert_order_on_edge_row
 
 

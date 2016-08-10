@@ -7,8 +7,8 @@ from maya.api import OpenMaya as api
 
 import mampy
 from mampy.packages import mvp
-from mampy.dgcomps import Component
-from mampy.dgnodes import Camera
+from mampy.comps import Component
+from mampy.nodes import Camera
 from mampy.utils import undoable, get_outliner_index
 
 logger = logging.getLogger(__name__)
