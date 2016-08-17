@@ -6,12 +6,12 @@ from maya import cmds
 import maya.api.OpenMaya as api
 
 import mampy
-from mampy.utils import undoable, get_outliner_index
-from mampy.exceptions import InvalidSelection
-from mampy.containers import SelectionList
-from mampy.nodes import DagNode
-from mampy.comps import MeshPolygon, MeshVert
-from mampy.computils import get_vert_order_on_edge_row
+from mampy._old.utils import undoable, get_outliner_index
+from mampy._old.exceptions import InvalidSelection
+from mampy._old.containers import SelectionList
+from mampy._old.nodes import DagNode
+from mampy._old.comps import MeshPolygon, MeshVert
+from mampy._old.computils import get_vert_order_on_edge_row
 
 
 logger = logging.getLogger(__name__)
@@ -253,7 +253,7 @@ def make_circle(mode=0):
 
                 dpsum = 0
                 for i, vert in enumerate(vert_deque):
-                    radian = math.radians((360 / (len(vert_deque) - 1)) * i)
+                    radian = math.radians((360 / (len(vert_deque)-1)) * i)
 
                     angle_matrix = api.MMatrix((
                         [math.cos(radian), -math.sin(radian), 0, 0],
@@ -320,4 +320,55 @@ def make_circle(mode=0):
 
 
 if __name__ == '__main__':
-    pass
+    import collections
+
+    # faces = mampy.ComponentList(cmds.sets('face_weighted_set', q=True))
+    # dag_name = str(iter(faces).next().dagpath)
+    # set_name = 'face_weighted_{}'.format(dag_name.replace('|', '_'))
+    # print set_name
+
+    face_weighted_name = 'face_weighted'
+    def modify_set(add=True):
+        faces = mampy.dagp_ls()
+        for face in faces:
+            dag_name = str(face).replace('|', '_')
+            set_name = '{}_{}'.format(face_weighted_name, dag_name)
+
+            try:
+                result = bool(cmds.sets(set_name, q=True))
+            except ValueError:
+                result = False
+            print result
+
+            if result:
+                cmds.sets(cmds.ls(sl=True), addElement=set_name)
+            else:
+                cmds.sets(n=set_name)
+
+    def set_face_weighted_normals():
+
+        faces = mampy.ComponentList()
+        for set in cmds.ls('face_weighted*'):
+            try:
+                tmp = mampy.ComponentList(cmds.sets(set, q=True))
+                faces.extend(tmp)
+            except ValueError:
+                continue
+
+        for face in faces:
+            for connected in face.get_connected():
+                shared_vert_map = collections.defaultdict(list)
+
+                for i in face.indices:
+                    for pv in face.mesh.getPolygonVertices(i):
+                        shared_vert_map[pv].append(i)
+
+                for vert, shared in shared_vert_map.iteritems():
+                    vec = api.MVector()
+                    for idx in shared:
+                        vec += face.mesh.getPolygonNormal(idx)
+                    vec = vec / len(shared)
+                    face.mesh.setVertexNormal(vec, vert)
+
+    # modify_set()
+    set_face_weighted_normals()
