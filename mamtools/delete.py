@@ -5,11 +5,11 @@ import maya.cmds as cmds
 import maya.api.OpenMaya as api
 
 import mampy
-from mampy.datatypes import Line3D
-from mampy.containers import SelectionList
-from mampy.utils import undoable, repeatable
-from mampy.comps import MeshPolygon
-from mampy.computils import get_outer_edges_in_loop
+from mampy._old.datatypes import Line3D
+from mampy._old.containers import SelectionList
+from mampy._old.utils import undoable, repeatable
+from mampy._old.comps import MeshPolygon
+from mampy._old.computils import get_outer_edges_in_loop
 
 logger = logging.getLogger(__name__)
 
