@@ -6,10 +6,12 @@ from maya import cmds
 from maya.api import OpenMaya as api
 
 import mampy
-from mampy.packages import mvp
-from mampy.comps import Component
-from mampy.nodes import Camera
-from mampy.utils import undoable, get_outliner_index
+from mampy._old.comps import Component
+from mampy._old.utils import get_outliner_index
+
+from mampy.core import mvp
+from mampy.core.dagnodes import Camera
+from mampy.utils import undoable
 
 logger = logging.getLogger(__name__)
 
@@ -329,4 +331,4 @@ def scale_mirror():
 
 
 if __name__ == '__main__':
-    scale_mirror()
+    pass
