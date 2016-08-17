@@ -30,7 +30,7 @@ def set_pivot(vector=(0, 0, 0)):
                                          .format(each.typestr))
 
 
-@undoable
+@undoable()
 def match_pivot_to_object():
     """
     Match secondary selection pivots to first object selected.
@@ -53,7 +53,7 @@ def match_pivot_to_object():
         trns = each.get_transform().set_pivot(piv)
 
 
-@undoable
+@undoable()
 def bake_pivot():
     """
     Bake modified manipulator pivot onto object.
