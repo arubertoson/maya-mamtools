@@ -1,13 +1,16 @@
+"""
+"""
 import logging
+import collections
 
 from PySide import QtGui
 
-import maya.cmds as cmds
-import maya.mel as mel
+from maya import cmds, mel
+import maya.api.OpenMaya as api
 
-import mampy
-from mampy.nodes import DagNode, Camera
-from mampy.utils import mvp
+from mampy.core import mvp
+from mampy.core.dagnodes import Camera
+from mampy.utils import History
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -16,78 +19,91 @@ logger.setLevel(logging.DEBUG)
 __all__ = ['viewport_snap', 'fit_selection', 'maximize_viewport_toggle']
 
 
-fit_view_history = mampy.utils.HistoryList()
+fit_view_history = History()
+CameraAttr = collections.namedtuple('CameraAttr', 'name translate rotate centerOfInterest')
 
 
-def fit_selection(fit_type='selected', mode=None, add=True):
+def walk_fit_camera_history(prev=False):
+    """
+    Walk saved camera positions.
+    """
+    if prev:
+        fit_view_history.jump_back()
+    else:
+        fit_view_history.jump_forward()
+
+    # Restore attributes
+    current = fit_view_history.current_element
+    camera = Camera(current.name)
+    camera_trns = camera.get_transform()
+
+    camera_trns['translate'] = current.translate
+    camera_trns['rotate'] = current.rotate
+    camera['centerOfInterest'] = current.centerOfInterest
+
+
+def fit_selection(fit_type='selected'):
     """
     Fit selection with history. For easy jumping between position on a mesh
     while changing selection.
     """
-    s = mampy.selected()
-    if mode is None:
-        fit_view_history.push_selection(s)
-    elif mode == 'next':
-        fit_view_history.jump_forward(s)
-        cmds.select(fit_view_history.current_element, r=True)
-    elif mode == 'prev':
-        fit_view_history.jump_back(s)
-        cmds.select(fit_view_history.current_element, r=True)
-    elif mode == 'last':
-        last_selected = mampy.ordered_selection()
-        fit_view_history.push_selection(last_selected[-1])
-        cmds.select(list(last_selected[-1]), r=True)
-        mel.eval('fitPanel -{}'.format(fit_type))
-        cmds.select(list(s))
-        return
-
     mel.eval('fitPanel -{}'.format(fit_type))
-    if mode is not None and add:
-        cmds.select(list(s), add=True)
 
-
-def viewport_snap(fit=True):
-    """ZBrush style camera snapping."""
-    cameras = cmds.listCameras(o=True)
-
-    if 'bottom' not in cameras:
-        top = Camera('top')
-
-        new_camera = DagNode(cmds.duplicate('top', name='bottom').pop())
-        new_camera['translateY'] = top.translateY * -1
-        new_camera['rotateX'] = top.rotateX * -1
-
-    if 'back' not in cameras:
-        back = Camera('front')
-
-        new_camera = DagNode(cmds.duplicate('front', name='back').pop())
-        new_camera['translateZ'] = back.translateZ * -1
-        new_camera['rotateY'] = -180
-
-    if 'left' not in cameras:
-        side = Camera('side')
-
-        new_camera = DagNode(cmds.duplicate('side', name='left').pop())
-        new_camera['translateX'] = side.translateX * -1
-        new_camera['rotateY'] = side.rotateY * -1
-
+    # Save camera info
     view = mvp.Viewport.active()
     camera = Camera(view.camera)
-    if not camera.name.startswith('persp'):
-        return cmds.lookThru(view.panel, 'persp')
+    camera_trns = camera.get_transform()
 
-    # create vector map
-    main_vector = camera.get_view_direction()
-    camera_vector = {}
-    for cam in cameras:
-        c = Camera(cam)
-        vec = c.get_view_direction()
-        camera_vector[c] = main_vector * vec
+    cam_attr = CameraAttr(
+        str(camera),
+        camera_trns['translate'],
+        camera_trns['rotate'],
+        camera['centerOfInterest'],
+    )
+    fit_view_history.push(cam_attr)
 
-    cam = max(camera_vector, key=camera_vector.get)
-    cmds.lookThru(view.panel, cam.name)
-    if fit:
-        cmds.viewFit(all=True)
+
+def viewport_snap():
+    view = mvp.Viewport.active()
+    camera = Camera(view.camera)
+    if camera.is_ortho():
+        camera['orthographic'] = False
+    else:
+        view_vector = camera.get_view_direction()
+        camera_center = camera.get_center_of_interest().z
+        center_of_interest_approx = view_vector * camera_center
+
+        # Find matching axis from world axes
+        axes = [
+            ('x', (1, 0, 0)),
+            ('y', (0, 1, 0)),
+            ('z', (0, 0, 1)),
+            ('x', (-1, 0, 0)),
+            ('y', (0, -1, 0)),
+            ('z', (0, 0, -1)),
+        ]
+        dots = {}
+        for axis, world_vector in axes:
+            dot = view_vector * api.MVector(world_vector)
+            if axis not in dots or (axis in dots and dot > dots[axis]):
+                dots[axis] = dot
+        axis = max(dots, key=dots.get)
+
+        # Get necessary transforms
+        cam_transform = camera.get_transform()
+        cam_translate = cam_transform.get_translation()
+        cam_rotate = cam_transform.get_rotate()
+
+        view_vector = cam_translate - center_of_interest_approx
+        # Modify non matching world vectors.
+        for i in 'xyz'.replace(axis, ''):
+            setattr(cam_translate, i, getattr(view_vector, i))
+
+        camera['orthographic'] = True
+        camera['orthographicWidth'] = abs(camera_center)
+        cam_transform['translate'] = list(cam_translate)
+        cam_transform['rotateX'] = int(90 * round(float(cam_rotate.x)/90))
+        cam_transform['rotateY'] = int(90 * round(float(cam_rotate.y)/90))
 
 
 def maximize_viewport_toggle():
@@ -118,5 +134,6 @@ def reset_camera(camera=None):
     cmds.xform(camera, ws=True, t=[trn[0], trn[1], trn[2]])
     cmds.xform(camera, os=True, ro=[rot[0], rot[1], 0])
 
+
 if __name__ == '__main__':
-    pass
+    viewport_snap()
