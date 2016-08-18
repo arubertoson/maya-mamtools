@@ -3,6 +3,7 @@ import collections
 
 import maya.cmds as cmds
 import maya.api.OpenMaya as api
+from maya.api.OpenMaya import MFn
 
 import mampy
 from mampy._old.datatypes import Line3D
@@ -10,6 +11,8 @@ from mampy._old.containers import SelectionList
 from mampy._old.utils import undoable, repeatable
 from mampy._old.comps import MeshPolygon
 from mampy._old.computils import get_outer_edges_in_loop
+
+from mampy.core.components import MeshVert
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +58,20 @@ def history():
 @undoable
 @repeatable
 def collapse():
-    s = mampy.selected()
-    if not s or next(s.itercomps(), None) is None:
+    selected = mampy.complist()
+    if not selected:
         return logger.warn('Invalid component selection.')
 
-    cmds.select(cl=True)
-    for comp in s.itercomps():
-        vert = comp.to_vert()
-        cmds.xform(list(vert), ws=True, t=list(vert.bounding_box.center)[:3])
+    for comp in selected:
+        if comp.type == MFn.kMeshEdgeComponent:
+            for idx in comp.indices:
+                vert = MeshVert.create(comp.dagpath).add(comp.vertices[idx])
+                vert.translate(t=list(vert.bbox.center)[:3], ws=True)
+        else:
+            vert = comp.to_vert()
+            vert.translate(t=list(vert.bbox.center)[:3], ws=True)
         cmds.polyMergeVertex(list(comp), distance=0.001)
+    cmds.select(cl=True)
 
 
 @undoable
@@ -157,4 +165,4 @@ def unbevel():
 
 
 if __name__ == '__main__':
-    unbevel()
+    collapse()
