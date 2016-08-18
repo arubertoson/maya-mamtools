@@ -1,7 +1,8 @@
+"""
+"""
 import logging
 
-import maya.cmds as cmds
-import maya.mel as mel
+from maya import cmds
 from maya.api.OpenMaya import MFn
 
 
@@ -11,15 +12,8 @@ import mampy
 from mampy.pyside.utils import get_maya_main_window
 
 
-
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
-
-
-__all__ = ['unhide_all', 'visibility_toggle', 'display_edges', 'display_vertex',
-           'display_border_edges', 'display_map_border', 'display_textures',
-           'display_xray', 'wireframe_shaded_toggle', 'wireframe_on_shaded',
-           'wireframe_on_bg_objects', 'wireframe_backface_culling']
 
 
 def toggle_default_material():
@@ -86,20 +80,17 @@ def unhide_all(unhide_types=None):
     """
     unhide all groups and mesh objects in the scene.
     """
-    s = mampy.ls(transforms=True)
-    for dag in s.iterdags():
-        shape = dag.get_shape()
-        if shape is None or shape.type == MFn.kMesh:
-            dag["visibility"] = True
+    for trans in mampy.daglist(transforms=True):
+        if trans.shape is None or trans.shape.type == MFn.kMesh:
+            trans.attr['visibility'] = True
 
 
 def visibility_toggle():
     """
     Toggle visibility of selected objects.
     """
-    s = mampy.selected()
-    for dag in s.iterdags():
-        dag['visibility'] = not(dag.visibility)
+    for dag in mampy.daglist():
+        dag.attr['visibility'] = not(dag.attr['visibility'])
 
 
 def display_edges(show_hard=True):
@@ -152,18 +143,14 @@ def display_xray():
     """
     Toggles xray on selected objects.
     """
-    s = mampy.ls(sl=True, dag=True, type='mesh')
-    h = mampy.ls(hl=True, dag=True, type='mesh')
-    if h: s.extend(h)
-
-    if not s:
+    selected = mampy.daglist()
+    if not selected:
         return logger.warn('Nothing selected.')
 
-    for dag in s.iterdags():
-        shape = dag.get_shape()
-        if shape is not None and shape.type == MFn.kMesh:
-            state = cmds.displaySurface(str(shape), q=True, xRay=True)
-            cmds.displaySurface(str(shape), xRay=not(state.pop()))
+    for dag in selected:
+        if dag.shape and dag.shape.type == MFn.kMesh:
+            state = cmds.displaySurface(str(dag.shape), q=True, xRay=True).pop()
+            cmds.displaySurface(str(dag.shape), xRay=not(state))
 
 
 def shaded_toggle():
@@ -364,4 +351,4 @@ def view_render():
 
 
 if __name__ == '__main__':
-    toggle_raised_dock()
+    display_xray()
