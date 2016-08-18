@@ -35,10 +35,9 @@ def walk_fit_camera_history(prev=False):
     # Restore attributes
     current = fit_view_history.current_element
     camera = Camera(current.name)
-    camera_trns = camera.get_transform()
 
-    camera_trns.attr['translate'] = current.translate
-    camera_trns.attr['rotate'] = current.rotate
+    camera.transform.attr['translate'] = current.translate
+    camera.transform.attr['rotate'] = current.rotate
     camera.attr['centerOfInterest'] = current.centerOfInterest
 
 
@@ -52,12 +51,11 @@ def fit_selection(fit_type='selected'):
     # Save camera info
     view = mvp.Viewport.active()
     camera = Camera(view.camera)
-    camera_trns = camera.get_transform()
 
     cam_attr = CameraAttr(
         str(camera),
-        camera_trns.attr['translate'],
-        camera_trns.attr['rotate'],
+        camera.transform.attr['translate'],
+        camera.transform.attr['rotate'],
         camera.attr['centerOfInterest'],
     )
     fit_view_history.push(cam_attr)
@@ -90,9 +88,8 @@ def viewport_snap():
         axis = max(dots, key=dots.get)
 
         # Get necessary transforms
-        cam_transform = camera.get_transform()
-        cam_translate = cam_transform.get_translation()
-        cam_rotate = cam_transform.get_rotate()
+        cam_translate = camera.transform.get_translation()
+        cam_rotate = camera.transform.get_rotate()
 
         view_vector = cam_translate - center_of_interest_approx
         # Modify non matching world vectors.
@@ -101,9 +98,9 @@ def viewport_snap():
 
         camera.attr['orthographic'] = True
         camera.attr['orthographicWidth'] = abs(camera_center)
-        cam_transform.attr['translate'] = list(cam_translate)
-        cam_transform.attr['rotateX'] = int(90 * round(float(cam_rotate.x)/90))
-        cam_transform.attr['rotateY'] = int(90 * round(float(cam_rotate.y)/90))
+        camera.transform.attr['translate'] = list(cam_translate)
+        camera.transform.attr['rotateX'] = int(90 * round(float(cam_rotate.x)/90))
+        camera.transform.attr['rotateY'] = int(90 * round(float(cam_rotate.y)/90))
 
 
 def maximize_viewport_toggle():

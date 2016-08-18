@@ -1,61 +1,62 @@
+"""
+"""
 import logging
 import collections
+from functools import partial
 
 import maya.cmds as cmds
-import maya.api.OpenMaya as api
 from maya.api.OpenMaya import MFn
 
 import mampy
-from mampy._old.datatypes import Line3D
-from mampy._old.containers import SelectionList
-from mampy._old.utils import undoable, repeatable
-from mampy._old.comps import MeshPolygon
-from mampy._old.computils import get_outer_edges_in_loop
+from mampy.core.datatypes import Line3D
+from mampy.utils import undoable, repeatable
+from mampy.core.exceptions import NothingSelected, InvalidSelection
+from mampy.core.components import (SingleIndexComponent, MeshVert,
+                                   get_outer_and_inner_edges_from_edge_loop)
+from mampy.core.selectionlist import ComponentList
 
-from mampy.core.components import MeshVert
 
 logger = logging.getLogger(__name__)
 
 
 __all__ = ['delete', 'history', 'collapse', 'merge_faces', 'merge_verts',
-           'transforms']
+           'transforms', 'unbevel']
 
 
-@undoable
+@undoable()
 @repeatable
 def delete(cv=False):
     """Custom delete using 'right' delete function depending on selection."""
-    s = mampy.selected()
-    if not s:
+    selected = mampy.complist() or mampy.daglist()
+    if not selected:
         return logger.warn('Nothing to delete.')
 
-    for comp in s.itercomps():
-        if not comp:
-            cmds.delete(str(comp.dagpath))
-
-        elif comp.is_face():
-            cmds.polyDelFacet(list(comp), ch=False)
-        elif comp.is_edge():
-            cmds.polyDelEdge(list(comp), ch=False, cv=cv)
-        elif comp.is_vert():
-            cmds.polyDelVertex(list(comp), ch=False)
+    for each in selected:
+        if isinstance(each, SingleIndexComponent):
+            # Try to delete supported types if that fails uss default delete in
+            # maya
+            try:
+                {
+                    MFn.kMeshEdgeComponent: partial(cmds.polyDelEdge, each.cmdslist(), cv=cv),
+                    MFn.kMeshVertComponent: partial(cmds.polyDelVertex, each.cmdslist()),
+                    MFn.kMeshPolygonComponent: partial(cmds.polyDelFacet, each.cmdslist()),
+                }[each.type]()
+            except KeyError:
+                cmds.delete(each.cmdslist())
         else:
-            cmds.delete(str(comp), ch=False)
+            cmds.delete(str(each))
     cmds.select(cl=True)
 
 
 @repeatable
 def history():
     """Delete history on selected objects, works on hilited objects."""
-    s = mampy.selected()
-    h = mampy.ls(hl=True, dag=True)
-    if h:
-        s.extend(h)
-
-    cmds.delete(list(s), ch=True)
+    with undoable():
+        for each in mampy.daglist():
+            cmds.delete(str(each.transform), ch=True)
 
 
-@undoable
+@undoable()
 @repeatable
 def collapse():
     selected = mampy.complist()
@@ -64,70 +65,79 @@ def collapse():
 
     for comp in selected:
         if comp.type == MFn.kMeshEdgeComponent:
-            for idx in comp.indices:
-                vert = MeshVert.create(comp.dagpath).add(comp.vertices[idx])
-                vert.translate(t=list(vert.bbox.center)[:3], ws=True)
+            for comp in comp.get_connected_components():
+                for edge in comp.indices:
+                    vert = MeshVert.create(comp.dagpath).add(comp.vertices[edge])
+                    vert.translate(t=list(comp.bbox.center)[:3], ws=True)
         else:
             vert = comp.to_vert()
             vert.translate(t=list(vert.bbox.center)[:3], ws=True)
-        cmds.polyMergeVertex(list(comp), distance=0.001)
+        cmds.polyMergeVertex(comp.cmdslist(), distance=0.001)
     cmds.select(cl=True)
 
 
-@undoable
+@undoable()
 @repeatable
 def merge_faces():
     """Removes edges inside of face selection."""
-    s = mampy.selected()
-    if (not s or not isinstance(next(s.itercomps()), MeshPolygon) or
-            not len(s[0]) > 1):
-        return logger.warn('Invalid Selection, must have 2 or more polygons'
-                           'selected.')
+    selected = mampy.complist()
+    if not selected:
+        raise NothingSelected()
 
-    faces = SelectionList()
-    for comp in s.itercomps():
-        border_verts = comp.to_vert(border=True)
-        internal_edges = comp.to_edge(internal=True)
-        cmds.polyDelEdge(list(internal_edges), cv=False, ch=False)
+    control_object = next(iter(selected))
+    if not control_object.type == MFn.kMeshPolygonComponent or not len(control_object) > 1:
+        raise InvalidSelection('Must have at least two connected faces selected.')
 
-        # Find new face
-        face = collections.Counter()
-        for vert in cmds.ls(list(border_verts), fl=True):
-            f = cmds.polyListComponentConversion(vert, tf=True)
-            face.update(cmds.ls(f, fl=True))
-        faces.append(face.most_common(1).pop()[0])
+    new_faces = ComponentList()
+    for face in selected:
+        # We must first collect all necessary elements before we operate on them.
+        # This is to avoid getting uncertain information due to indices changing
+        # when performing the delete function.
+        border_vertices = ComponentList()
+        internal_edges = ComponentList()
+        for connected_face in face.get_connected_components():
+            border_vertices.append(connected_face.to_vert(border=True))
+            internal_edges.append(connected_face.to_edge(internal=True))
 
-    cmds.select(list(faces))
+        # We only delete once per object to perserve as much information as
+        # possible.
+        cmds.polyDelEdge(internal_edges.cmdslist())
+        # Collect the most shared face on the border vertices to get new faces
+        # from the delete operation.
+        for border_vert in border_vertices:
+            counter = collections.Counter()
+            for idx in border_vert.indices:
+                f = border_vert.new().add(idx).to_face()
+                counter.update(f.indices)
+            new_faces.append(face.new().add(counter.most_common(1).pop()[0]))
+    # Select and be happy!
+    cmds.select(new_faces.cmdslist())
 
 
-@undoable
+@undoable()
 @repeatable
 def merge_verts(move):
     """Merges verts to first selection."""
-    s = mampy.ordered_selection(fl=True)
-    if move or len(s) == 2:
+    ordered_selection = mampy.complist(os=True)
+    if move or len(ordered_selection) == 2:
         if not move:
-            v1, v2 = s.itercomps()
-            pos = (v1.points.pop() + api.MVector(v2.points.pop())) / len(s)
+            v1, v2 = ordered_selection
+            pos = v1.bbox.expand(v2.bbox).center
         else:
-            pos = s[0].points[0]
-        cmds.xform(list(s), ws=True, t=list(pos)[:3])
-    cmds.polyMergeVertex(list(s), distance=0.001, ch=True)
+            pos = ordered_selection.pop().bbox.center
+        cmds.xform(ordered_selection.cmdslist(), t=list(pos)[:3], ws=True)
+        cmds.polyMergeVertex(ordered_selection.cmdslist(), distance=0.001, ch=True)
 
 
-@undoable
+@undoable()
 @repeatable
 def transforms(translate=False, rotate=False, scale=False):
     """Small function to control transform freezes."""
-    s, h = mampy.ls(tr=True, l=True), mampy.ls(hl=True, dag=True)
-    if h:
-        s = h
-
-    transforms = [str(dp) for dp in s.iterdags() if dp.type == api.MFn.kTransform]
+    transforms = [str(dp.transform) for dp in mampy.daglist()]
     cmds.makeIdentity(transforms, t=translate, r=rotate, s=scale, apply=True)
 
 
-@undoable
+@undoable()
 @repeatable
 def unbevel():
     """
@@ -137,32 +147,25 @@ def unbevel():
     connected to another edge from another bevel. This will cause the script
     to get confused.
     """
-    s = mampy.selected()
-    for comp in s.itercomps():
+    selected = mampy.complist()
+    for edge in selected:
 
-        cmds.select(list(comp), r=True)
-        merge_list = SelectionList()
+        # cmds.select(edge.cmdslist(), r=True)
+        merge_list = ComponentList()
+        for each in edge.get_connected_components():
+            outer_edges, inner_verts = get_outer_and_inner_edges_from_edge_loop(each)
 
-        for c in comp.get_connected():
-            outer_edges, rest = get_outer_edges_in_loop(c)
-
-            edge1, edge2 = list(outer_edges.itercomps())
-            line1 = Line3D(edge1[0].points[0], edge1[1].points[0])
-            line2 = Line3D(edge2[0].points[0], edge2[1].points[0])
-            intersection_line = line1.shortest_line_to_other(line2)
-
-            rest.translate(t=intersection_line.sum() * 0.5, ws=True)
-            merge_list.append(rest)
+            edge1, edge2 = outer_edges
+            line1 = Line3D(edge1[0].bbox.center, edge1[1].bbox.center)
+            line2 = Line3D(edge2[0].bbox.center, edge2[1].bbox.center)
+            intersection = line1.shortest_line_to_other(line2)
+            inner_verts.translate(t=intersection.sum() * 0.5, ws=True)
+            merge_list.append(inner_verts)
 
         # Merge components on object after all operation are done. Mergin
-        # before will change vert ids and make the script break
-        cmds.polyMergeVertex(list(merge_list), distance=0.001, ch=False)
-
-    # Restore selection
-    cmds.selectMode(component=True)
-    cmds.hilite([str(i) for i in s.iterdags()], r=True)
-    cmds.select(cl=True)
+        # before will change vert ids and make people sad.
+        cmds.polyMergeVertex(merge_list.cmdslist(), distance=0.001)
 
 
 if __name__ == '__main__':
-    collapse()
+    pass
