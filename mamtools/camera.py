@@ -37,9 +37,9 @@ def walk_fit_camera_history(prev=False):
     camera = Camera(current.name)
     camera_trns = camera.get_transform()
 
-    camera_trns['translate'] = current.translate
-    camera_trns['rotate'] = current.rotate
-    camera['centerOfInterest'] = current.centerOfInterest
+    camera_trns.attr['translate'] = current.translate
+    camera_trns.attr['rotate'] = current.rotate
+    camera.attr['centerOfInterest'] = current.centerOfInterest
 
 
 def fit_selection(fit_type='selected'):
@@ -56,9 +56,9 @@ def fit_selection(fit_type='selected'):
 
     cam_attr = CameraAttr(
         str(camera),
-        camera_trns['translate'],
-        camera_trns['rotate'],
-        camera['centerOfInterest'],
+        camera_trns.attr['translate'],
+        camera_trns.attr['rotate'],
+        camera.attr['centerOfInterest'],
     )
     fit_view_history.push(cam_attr)
 
@@ -67,7 +67,7 @@ def viewport_snap():
     view = mvp.Viewport.active()
     camera = Camera(view.camera)
     if camera.is_ortho():
-        camera['orthographic'] = False
+        camera.attr['orthographic'] = False
     else:
         view_vector = camera.get_view_direction()
         camera_center = camera.get_center_of_interest().z
@@ -99,11 +99,11 @@ def viewport_snap():
         for i in 'xyz'.replace(axis, ''):
             setattr(cam_translate, i, getattr(view_vector, i))
 
-        camera['orthographic'] = True
-        camera['orthographicWidth'] = abs(camera_center)
-        cam_transform['translate'] = list(cam_translate)
-        cam_transform['rotateX'] = int(90 * round(float(cam_rotate.x)/90))
-        cam_transform['rotateY'] = int(90 * round(float(cam_rotate.y)/90))
+        camera.attr['orthographic'] = True
+        camera.attr['orthographicWidth'] = abs(camera_center)
+        cam_transform.attr['translate'] = list(cam_translate)
+        cam_transform.attr['rotateX'] = int(90 * round(float(cam_rotate.x)/90))
+        cam_transform.attr['rotateY'] = int(90 * round(float(cam_rotate.y)/90))
 
 
 def maximize_viewport_toggle():
