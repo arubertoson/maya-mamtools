@@ -1,18 +1,23 @@
+"""
+"""
 import sys
 import math
 import logging
+import collections
 
 from maya import cmds
+from maya.api.OpenMaya import MFn
 import maya.api.OpenMaya as api
 
 import mampy
-from mampy._old.utils import undoable, get_outliner_index
-from mampy._old.exceptions import InvalidSelection
-from mampy._old.containers import SelectionList
-from mampy._old.nodes import DagNode
-from mampy._old.comps import MeshPolygon, MeshVert
+from mampy._old.comps import MeshVert
 from mampy._old.computils import get_vert_order_on_edge_row
 
+from mampy.utils import undoable, repeatable, get_outliner_index
+from mampy.core.dagnodes import Node
+from mampy.core.components import MeshPolygon
+from mampy.core.selectionlist import ComponentList
+from mampy.core.exceptions import InvalidSelection
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -21,48 +26,46 @@ logger.setLevel(logging.DEBUG)
 EPS = sys.float_info.epsilon
 
 
-@undoable
+@undoable()
+@repeatable
 def detach(extract=False):
     """
-    Extracts or duplicat selected polygon faces.
+    Extracts or duplicate selected polygon faces.
     """
-    s = mampy.selected()
-    if not s:
-        return logger.warn('Nothing selected.')
+    selected = mampy.complist()
+    if not selected:
+        raise InvalidSelection('Detach only works on edge and polygon components.')
+    else:
+        control = selected[0]
+        if control.type not in [MFn.kMeshPolygonComponent, MFn.kMeshEdgeComponent]:
+            raise InvalidSelection('Detach only works on edges and polygons.')
 
-    new = SelectionList()
-    for comp in s.itercomps():
-        if not comp.is_face():
-            continue
+    new = ComponentList()
+    for comp in selected:
 
-        # Duplicate
-        trans = DagNode.from_object(comp.dagpath.transform())
-        name = trans.name + ('_ext' if extract else '_dup')
-        dupdag = cmds.duplicate(str(comp.dagpath), n=name).pop(0)
+        node = Node(comp.dagpath)
+        name = '{}_{}'.format(node.transform.short_name, 'ext' if extract else 'dup')
+        cmds.duplicate(str(comp.dagpath), n=name)
 
-        # Delete children transforms
-        children = cmds.listRelatives(dupdag, type='transform', f=True)
-        if children is not None:
-            cmds.delete(children)
+        # Delete unwanted children from duplicate hierarchy
+        dupdag = Node(name)
+        for child in dupdag.iterchildren():
+            if child.type == MFn.kTransform:
+                cmds.delete(str(child))
 
-        # Delete unused faces
         if extract:
-            cmds.polyDelFacet(list(comp))
+            cmds.polyDelFacet(comp.cmdslist())
 
-        dcomp = MeshPolygon.create(dupdag)
-        dcomp.add(comp.indices)
-        print dcomp.is_complete()
-        if not dcomp.is_complete():
-            cmds.polyDelFacet(list(dcomp.toggle()))
+        dupcomp = MeshPolygon.create(dupdag.dagpath).add(comp.indices)
+        cmds.polyDelFacet(dupcomp.toggle().cmdslist())
 
-        # Select
-        cmds.hilite(str(dcomp.dagpath))
-        new.append(dcomp.get_complete())
-
-    cmds.select(list(new), r=True)
+        cmds.hilite(str(dupdag))
+        new.append(dupcomp.get_complete())
+    cmds.select(new.cmdslist(), r=True)
 
 
-@undoable
+@undoable()
+@repeatable
 def combine_separate():
     """
     Depending on selection will combine or separate objects.
@@ -71,67 +74,58 @@ def combine_separate():
     first object selected.
 
     """
-    def clean_up_object(dag):
+    def clean_up_object(new):
         """
         Cleans up after `polyUnite` / `polySeparate`
         """
-        if dag.get_parent() is not None:
-            dag.set_parent(parent)
-        trns = dag.get_transform()
+        if not new.get_parent() == parent:
+            new.set_parent(parent)
 
-        cmds.reorder(dag.name, f=True)
-        cmds.reorder(dag.name, r=outliner_index)
-        trns.set_pivot(pivot)
+        cmds.reorder(str(new), f=True)
+        cmds.reorder(str(new), r=outliner_index)
+        new.transform.set_pivot(pivot)
 
-        dag['rotate'] = list(src_trns.rotate)
-        dag['scale'] = list(src_trns.scale)
-        return dag.name
+        new.attr['rotate'] = list(transforms.rotate)
+        new.attr['scale'] = list(transforms.scale)
+        return cmds.rename(str(new), name.split('|')[-1])
 
-    s = mampy.ordered_selection(tr=True, l=True)
-    hl = mampy.ls(hl=True)
-    if len(s) == 0:
-        if len(hl) > 0:
-            s = hl
-        else:
-            return logger.warn('Nothing Selected.')
+    selected = mampy.daglist(os=True, tr=True, l=True)
+    if not selected:
+        raise InvalidSelection()
 
-    dag = s.pop()
-    parent = dag.get_parent()
+    dag = selected.pop()
+    name, parent = dag.short_name, dag.get_parent()
+    transforms = dag.transform.get_transforms()
+    pivot = dag.transform.get_rotate_pivot()
 
-    # Get origin information from source object
-    trns = dag.get_transform()
-    src_trns = trns.get_transforms()
-    pivot = trns.get_rotate_pivot()
-
-    if s:
+    if selected:
         logger.debug('Combining Objects.')
-        for i in s.iterdags():
-            if dag.is_child_of(i):
-                raise InvalidSelection('Cannot parent an object to one of its children')
-            if dag.is_parent_of(i):
+        for each in selected:
+            if dag.is_child_of(each):
+                raise InvalidSelection('Cannot parent an object to one of its '
+                                       'children')
+            elif dag.is_parent_of(each):
                 continue
-            i.set_parent(dag)
+            each.set_parent(each)
 
-    # Now we can check source objects position in outliner and
-    # un-rotate/un-scale
     outliner_index = get_outliner_index(dag)
-    dag.rotate = (0, 0, 0)
-    dag.scale = (1, 1, 1)
+    dag.transform.attr['rotate'] = (0, 0, 0)
+    dag.transform.attr['scale'] = (1, 1, 1)
 
-    # Perform combine or separate and clean up objects and leftover nulls.
-    if s:
-        new_dag = DagNode(cmds.polyUnite(dag.name, list(s), ch=False)[0])
-        cmds.select(cmds.rename(clean_up_object(new_dag), dag.name), r=True)
+    if selected:
+        new_dag = Node(cmds.polyUnite(name, selected.cmdslist(), ch=False)[0])
+        cmds.select(clean_up_object(new_dag), r=True)
     else:
         logger.debug('Separate Objects.')
-        new_dags = SelectionList(cmds.polySeparate(dag.name, ch=False))
-        for i in new_dags.copy().iterdags():
-            cmds.rename(clean_up_object(i), dag.name)
-        cmds.delete(dag.name)  # Delete leftover group.
-        cmds.select(list(new_dags), r=True)
+        new_dags = mampy.daglist(cmds.polySeparate(name, ch=False))
+        for new in new_dags:
+            cmds.rename(clean_up_object(new), name.split('|')[-1])
+        cmds.delete(name)
+        cmds.select(new_dags.cmdslist(), r=True)
 
 
-@undoable
+@undoable()
+@repeatable
 def flatten(averaged=True):
     """
     Flattens selection by averaged normal.
@@ -170,205 +164,169 @@ def flatten(averaged=True):
         cmds.scriptJob(event=['SelectionChanged', script_job], runOnce=True)
 
 
-@undoable
+@undoable()
+@repeatable
 def spin_edge(offset=1):
     """
     Spin all selected edges.
 
     Allows us to spin edges within a face selection.
     """
-    s = mampy.selected()
-    for comp in s.itercomps():
-        edge = comp.to_edge(internal=True)
-        cmds.polySpinEdge(list(edge), offset=offset, ch=False)
-    cmds.select(cl=True)
-    cmds.select(list(s), r=True)
+    selected = mampy.complist()
+    for comp in selected:
+        if not comp.is_edge():
+            comp = comp.to_edge(internal=True)
+        cmds.polySpinEdge(comp.cmdslist(), offset=offset, ch=False)
+    cmds.select(cl=True); cmds.select(selected.cmdslist(), r=True)
 
 
 def make_circle(mode=0):
-    """
-    Make circle from selection.
 
-    .. note:: This is pretty broken still, will need a rehaul when opertunity
-    is given.
-    """
-    import collections
-    s = mampy.selected()
-    for comp in s.itercomps():
+    def draw_circle():
 
-        for con in comp.get_connected():
-            edges = con.to_edge(border=True)
-            indices = [edges.mesh.getEdgeVertices(i) for i in edges.indices]
-            vert_row = get_vert_order_on_edge_row(indices)
-            vert_row = [
-                MeshVert.create(con.dagpath).add(i) for i in vert_row
-            ]
-            cen_point = con.bounding_box.center
+        sl = mampy.comp_ls()
+        for comp in sl:
+            edge = comp.to_edge(border=True)
+            circle_indices = get_vert_order_on_edge_row(
+                [edge.mesh.getEdgeVertices(i) for i in edge.indices]
+            )
+            vert = MeshVert.create(edge.dagpath).add(circle_indices)
+            circle_indices = [MeshVert.create(edge.dagpath).add(i) for i in circle_indices]
 
-            # Get average Normal
-            avg_normal = api.MFloatVector()
-            for i in con.indices:
-                avg_normal += con.get_normal(i).normal()
-            avg_normal = api.MVector(avg_normal / len(con))
+            vec = api.MFloatVector()
+            for i in vert.indices:
+                vec += vert.get_normal(i).normal()
+            vec = (vec / len(vert)).normalize()
 
-            # # Get Plane
-            proj_normal = avg_normal.normal()
-            dist = [(vert.points[0] - cen_point).length() for vert in vert_row]
-            radius = sum(dist) / len(vert_row)
+            center = api.MPoint()
+            for i in vert.points:
+                center += i
+            center = center / len(vert.points) #  vert.bounding_box.center
 
-            # Sorting help
-            angle = []
-            for i, vert in enumerate(vert_row):
-                try:
-                    vec1 = vert.points[0] - cen_point
-                    vec2 = vert_row[i + 1].points[0] - cen_point
-                except IndexError:
-                    pass
+            verts = collections.deque(circle_indices)
+            for i in verts:
+                if i.index == 104:
+                    first_vert = i
+                    break
+            # print verts[282]
 
-                angle1 = math.degrees(math.atan2(vec1.x, vec1.y))
-                angle2 = math.degrees(math.atan2(vec2.x, vec2.y))
+            # first_vert = get_dpsum(verts, vec)
+            # Rotate list to first_vert
+            for x in xrange(len(verts)):
+                if verts[x] == first_vert:
+                    break
+            verts.rotate(-x)
 
-                if angle2 > 90 and angle1 < -90:
-                    angle1 += 360
-                elif angle1 > 90 and angle2 < -90:
-                    angle2 += 360
+            radius = sum([center.distanceTo(i.points[0]) for i in circle_indices]) / len(circle_indices)
+            r1 = api.MFloatVector(list(first_vert.points[0] - center)[:3])
+            r = (r1 ^ vec).normalize()
+            s = (r ^ vec).normalize()
 
-                angle_sum = angle2 - angle1
-                if angle_sum < -180:
-                    angle_sum += 180
+            # Create circle
+            points = []
+            theta = (math.pi*2) / len(circle_indices)
+            for i, p in enumerate(verts):
+                angle = theta*i
+                x = center.x + radius * (math.sin(angle)*r.x + math.cos(angle)*s.x)
+                y = center.y + radius * (math.sin(angle)*r.y + math.cos(angle)*s.y)
+                z = center.z + radius * (math.sin(angle)*r.z + math.cos(angle)*s.z)
+                points.append(api.MPoint(x, y, z))
 
-                print angle_sum
+        for v in verts:
+            point = v.points[0]
 
-                angle.append(angle_sum)
+            d = {point.distanceTo(p): p for p in points}
+            result = d[min(d.iterkeys())]
 
-            if sum(angle) > 0:
-                vert_row.reverse()
+            v.translate(translation=list(result)[:3], ws=True, absolute=True)
+            points.remove(result)
+
+    def get_dpsum(vert_row, average_vec):
+        rotated_vec = api.MEulerRotation(average_vec).asMatrix()
+
+        dpsum = 0
+        first_vert = None
+        greatest_dpsum = -999999999.999999999
+        vert_deque = collections.deque(vert_row)
+        for x in xrange(len(vert_deque)):
+            vert_deque.append(vert_deque[0])
 
             dpsum = 0
-            first_vert = None
-            greatest_dpsum = -999999999.999999999
-            vert_deque = collections.deque(vert_row)
-            for x in xrange(len(vert_deque)):
-                vert_deque.append(vert_deque[0])
+            dtheta = math.radians(360 / len(vert_deque))
+            theta = 0
+            for i, vert in enumerate(vert_deque):
+                theta = math.radians((360 / (len(vert_deque) - 1)) * i)
 
-                dpsum = 0
-                for i, vert in enumerate(vert_deque):
-                    radian = math.radians((360 / (len(vert_deque)-1)) * i)
+                angle_matrix = api.MMatrix((
+                    [math.cos(theta), -math.sin(theta), 0, 0],
+                    [math.sin(theta), math.cos(theta), 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1],
+                ))
+                rot_vec = angle_matrix * (api.MVector(vert.points[0] * rotated_vec))
+                dpsum += api.MVector(vert.points[0]) * rot_vec
+                theta += dtheta
 
-                    angle_matrix = api.MMatrix((
-                        [math.cos(radian), -math.sin(radian), 0, 0],
-                        [math.sin(radian), math.cos(radian), 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1],
-                    ))
-                    rot_vec = api.MVector(vert.points[0] * angle_matrix)
-                    dpsum += api.MVector(vert.points[0]) * rot_vec
+            print 'dpsum', dpsum
+            if dpsum > greatest_dpsum:
+                first_vert, greatest_dpsum = vert_deque[0], dpsum
 
-                print 'dpsum', dpsum
-                if dpsum > greatest_dpsum:
-                    first_vert, greatest_dpsum = vert_deque[0], dpsum
-
-                vert_deque.pop()
-                vert_deque.rotate(1)
-
-            # Rotate
-            for x in xrange(len(vert_deque)):
-                if vert_deque[x] == first_vert:
-                    break
-                vert_deque.rotate()
-
-            # Radius average
-            # avg_radius = 0
-            # for x, vert in enumerate(vert_deque):
-            #     avg_radius += (vert.points[0]-vert_deque[x-1].points[0]).length()
-            # avg_radius /= (math.pi*2)
-
-            # Perform
-            if mode == 0:
-                # Equal
-                base_point = vert_deque[0].points[0]
-                # base_vector = (base_point - cen_point).normal()
-                base_vector = base_point - cen_point
-
-                degeree_span = 360 / len(vert_deque)
-
-                for i, vert in enumerate(vert_deque):
-
-                    rad_span = math.radians(degeree_span * i)
-                    rot_vector = base_vector.rotateBy(
-                        api.MQuaternion(rad_span, avg_normal)
-                    )
-                    trans = api.MVector(cen_point + rot_vector)
-                    vert.translate(t=trans, ws=True)
-
-            elif mode == 1:
-                # Closest
-                for vert in vert_deque:
-                    unit_vector = (vert.points[0] - cen_point).normal()
-                    angle_a = math.degrees(avg_normal.angle(unit_vector))
-                    angle_b = 90 - angle_a
-                    length = math.sin(math.radians(angle_b))
-
-                    print length
-                    cb = length * avg_normal
-                    ac = unit_vector - cb
-                    dist = ac.length()
-                    ac = ac * (radius / dist)
-                    ac = api.MVector(cen_point + ac)
-
-                    vert.translate(t=ac, ws=True)
+            vert_deque.pop()
+            vert_deque.rotate(1)
+        return first_vert
 
 
 if __name__ == '__main__':
-    import collections
+    spin_edge()
 
     # faces = mampy.ComponentList(cmds.sets('face_weighted_set', q=True))
     # dag_name = str(iter(faces).next().dagpath)
     # set_name = 'face_weighted_{}'.format(dag_name.replace('|', '_'))
-    # print set_name
+    # # print set_name
 
-    face_weighted_name = 'face_weighted'
-    def modify_set(add=True):
-        faces = mampy.dagp_ls()
-        for face in faces:
-            dag_name = str(face).replace('|', '_')
-            set_name = '{}_{}'.format(face_weighted_name, dag_name)
+    # face_weighted_name = 'face_weighted'
+    # def modify_set(add=True):
+    #     faces = mampy.dagp_ls()
+    #     for face in faces:
+    #         dag_name = str(face).replace('|', '_')
+    #         set_name = '{}_{}'.format(face_weighted_name, dag_name)
 
-            try:
-                result = bool(cmds.sets(set_name, q=True))
-            except ValueError:
-                result = False
-            print result
+    #         try:
+    #             result = bool(cmds.sets(set_name, q=True))
+    #         except ValueError:
+    #             result = False
+    #         print result
 
-            if result:
-                cmds.sets(cmds.ls(sl=True), addElement=set_name)
-            else:
-                cmds.sets(n=set_name)
+    #         if result:
+    #             cmds.sets(cmds.ls(sl=True), addElement=set_name)
+    #         else:
+    #             cmds.sets(n=set_name)
 
-    def set_face_weighted_normals():
+    # def set_face_weighted_normals():
 
-        faces = mampy.ComponentList()
-        for set in cmds.ls('face_weighted*'):
-            try:
-                tmp = mampy.ComponentList(cmds.sets(set, q=True))
-                faces.extend(tmp)
-            except ValueError:
-                continue
+    #     faces = mampy.ComponentList()
+    #     for set in cmds.ls('face_weighted*'):
+    #         try:
+    #             tmp = mampy.ComponentList(cmds.sets(set, q=True))
+    #             faces.extend(tmp)
+    #         except ValueError:
+    #             continue
 
-        for face in faces:
-            for connected in face.get_connected():
-                shared_vert_map = collections.defaultdict(list)
+    #     for face in faces:
+    #         for connected in face.get_connected():
+    #             shared_vert_map = collections.defaultdict(list)
 
-                for i in face.indices:
-                    for pv in face.mesh.getPolygonVertices(i):
-                        shared_vert_map[pv].append(i)
+    #             for i in face.indices:
+    #                 for pv in face.mesh.getPolygonVertices(i):
+    #                     shared_vert_map[pv].append(i)
 
-                for vert, shared in shared_vert_map.iteritems():
-                    vec = api.MVector()
-                    for idx in shared:
-                        vec += face.mesh.getPolygonNormal(idx)
-                    vec = vec / len(shared)
-                    face.mesh.setVertexNormal(vec, vert)
+    #             for vert, shared in shared_vert_map.iteritems():
+    #                 vec = api.MVector()
+    #                 for idx in shared:
+    #                     vec += face.mesh.getPolygonNormal(idx)
+    #                 vec = vec / len(shared)
+    #                 face.mesh.setVertexNormal(vec, vert)
 
-    # modify_set()
-    set_face_weighted_normals()
+    # # modify_set()
+    # set_face_weighted_normals()
+
