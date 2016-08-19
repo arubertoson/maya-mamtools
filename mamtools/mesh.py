@@ -311,15 +311,8 @@ def set_face_weighted_normals_sets(add=True):
             cmds.sets(name=set_name)
 
 
-def display_face_weighted_normals_sets():
-    # Change material on face weighted faces.
-    pass
-
-
-def set_face_weighted_normals():
-    """
-    """
-    sets = cmds.ls('face_weighted*')
+def get_face_weighted_sets():
+    sets = cmds.ls('{}*'.format(_face_weighted_name))
     selected, to_weight = mampy.daglist(), ComponentList()
     if selected:
         for each in selected:
@@ -332,7 +325,18 @@ def set_face_weighted_normals():
                 to_weight.extend(mampy.complist(cmds.sets(set_name, q=True)))
             except ValueError:
                 continue
+    return to_weight
 
+
+def display_face_weighted_normals_sets():
+    # TODO: Change material on face weighted faces.
+    cmds.select(get_face_weighted_sets().cmdslist())
+
+
+def set_face_weighted_normals():
+    """
+    """
+    to_weight = get_face_weighted_sets()
     if not to_weight:
         raise ObjecetDoesNotExist()
 
