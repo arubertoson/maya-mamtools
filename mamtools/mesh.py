@@ -10,14 +10,12 @@ from maya.api.OpenMaya import MFn
 import maya.api.OpenMaya as api
 
 import mampy
-from mampy._old.comps import MeshVert
-from mampy._old.computils import get_vert_order_on_edge_row
-
 from mampy.utils import undoable, repeatable, get_outliner_index
 from mampy.core.dagnodes import Node
-from mampy.core.components import MeshPolygon
+from mampy.core.components import MeshPolygon, MeshVert, get_vert_order_from_connected_edges
 from mampy.core.selectionlist import ComponentList
-from mampy.core.exceptions import InvalidSelection
+from mampy.core.exceptions import InvalidSelection, ObjecetDoesNotExist
+from mampy.core.utils import get_average_vert_normal
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -130,35 +128,33 @@ def flatten(averaged=True):
     """
     Flattens selection by averaged normal.
     """
-    def flatten(vector):
-        cmds.select(list(s))
-        comp = s.itercomps().next()
+    def flatten(component, script_job=False):
+
+        if script_job:
+            cmds.select(selected.cmdslist())
+        else:
+            cmds.select(component.cmdslist())
+
+        center = list(component.bbox.center)[:3]
+        origin = get_average_vert_normal(component.normals, component.indices)
 
         # Perform scale
-        cmds.manipScaleContext('Scale', e=True, mode=6, alignAlong=vector)
+        cmds.manipScaleContext('Scale', e=True, mode=6, alignAlong=origin)
         radians = cmds.manipScaleContext('Scale', q=True, orientAxes=True)
         t = [math.degrees(r) for r in radians]
-        cmds.scale(0, 1, 1, r=True, oa=t, p=list(comp.bounding_box.center)[:3])
+        cmds.scale(0, 1, 1, r=True, oa=t, p=center)
 
     def script_job():
         """
         Get normal from script job selection and pass it to flatten.
         """
-        driver = mampy.selected()
-        for comp in driver.itercomps():
-            vector = comp.get_normal(comp.index).normalize()
-        flatten(vector)
+        flatten(next(iter(mampy.complist())).to_vert(), True)
 
-    s = mampy.selected()
+    selected = mampy.complist()
     if averaged:
-        # Get average normal and scale selection to zero
-        for c in s.itercomps():
-            comp = c.to_vert()
-            average_vector = api.MFloatVector()
-            for idx in comp.indices:
-                average_vector += comp.get_normal(idx)
-            average_vector /= len(comp.indices)
-        flatten(average_vector)
+        for comp in selected:
+            flatten(comp.to_vert())
+        cmds.select(selected.cmdslist(), r=True)
     else:
         # Scale selection to given selection.
         cmds.scriptJob(event=['SelectionChanged', script_job], runOnce=True)
@@ -180,153 +176,179 @@ def spin_edge(offset=1):
     cmds.select(cl=True); cmds.select(selected.cmdslist(), r=True)
 
 
-def make_circle(mode=0):
+@undoable()
+def draw_circle():
 
-    def draw_circle():
+    def dpsum():
+        verts = collections.deque(ordered_verts)
+        plane_euler = api.MEulerRotation(plane_unit_vector).asMatrix()
+        greatest_sum = 0
+        for x in xrange(len(verts)):
+            verts.append(verts[0])
 
-        sl = mampy.comp_ls()
-        for comp in sl:
+            dpsum = 0
+            theta = (math.pi*2) / (len(verts)-1)
+            for idx, vert in enumerate(verts):
+                angle = theta*idx
+                point = vert.bbox.center
+                angle_matrix = api.MMatrix((
+                    [math.cos(angle), -math.sin(angle), 0, 0],
+                    [math.sin(angle), math.cos(angle), 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, 1],
+                ))
+                rotate_vector = angle_matrix * api.MVector(point * plane_euler)
+                dpsum += api.MVector(point) * rotate_vector
+
+            if dpsum > greatest_sum:
+                greatest_sum, first = dpsum, verts[0]
+            verts.pop()
+            verts.rotate(1)
+        return first.indices[0]
+
+    def get_control_vert():
+        for vert in selected:
+            # make sure vert belongs to same dagpath object and is vert
+            if not vert.is_vert() or not vert.dagpath == comp.dagpath:
+                continue
+
+            for index in vert.indices:
+                if index in comp.vertices:
+                    return index
+        # If we can't find a control vert try to determine the vert.
+        # This is very unreliable but better than skewed results.
+        return dpsum()
+
+    selected = mampy.multicomplist()
+    for component in selected:
+        # Verts are used to specify first vert in row. Exit out if we encounter
+        # one here.
+        if component.is_vert():
+            continue
+
+        for comp in component.get_connected_components():
+
+            # Only work on border edges
             edge = comp.to_edge(border=True)
-            circle_indices = get_vert_order_on_edge_row(
-                [edge.mesh.getEdgeVertices(i) for i in edge.indices]
-            )
-            vert = MeshVert.create(edge.dagpath).add(circle_indices)
-            circle_indices = [MeshVert.create(edge.dagpath).add(i) for i in circle_indices]
 
-            vec = api.MFloatVector()
-            for i in vert.indices:
-                vec += vert.get_normal(i).normal()
-            vec = (vec / len(vert)).normalize()
+            # Order the vert list to make sure we operate in order.
+            ordered_vert_indices = get_vert_order_from_connected_edges(edge.vertices.values())
+            vert_object = MeshVert.create(comp.dagpath).add(ordered_vert_indices)
+            ordered_verts = [vert_object.new().add(i) for i in ordered_vert_indices]
+            # Get plane unit vector from selection.
+            plane_vector = get_average_vert_normal(vert_object.normals, vert_object.indices)
+            plane_unit_vector = plane_vector.normalize()
 
+            # Cant use the components bounding box here as the bounding box is not
+            # rotated to fit the component. The only valid way to get center is
+            # average the selected points.
             center = api.MPoint()
-            for i in vert.points:
+            for i in comp.points:
                 center += i
-            center = center / len(vert.points) #  vert.bounding_box.center
+            center /= len(comp.points)
+            return
 
-            verts = collections.deque(circle_indices)
-            for i in verts:
-                if i.index == 104:
-                    first_vert = i
-                    break
-            # print verts[282]
+            # iterate over the selection and try to find the selected control point.
+            control_vert_index = get_control_vert()
+            # place vert at beginning of list.
+            index_of_control_vert = ordered_vert_indices.index(control_vert_index)
+            ordered_verts = collections.deque(ordered_verts)
+            ordered_verts.rotate(index_of_control_vert)
 
-            # first_vert = get_dpsum(verts, vec)
-            # Rotate list to first_vert
-            for x in xrange(len(verts)):
-                if verts[x] == first_vert:
-                    break
-            verts.rotate(-x)
+            # make circle
+            radius = sum([center.distanceTo(i.bbox.center) for i in ordered_verts])
+            radius /= len(ordered_verts)
 
-            radius = sum([center.distanceTo(i.points[0]) for i in circle_indices]) / len(circle_indices)
-            r1 = api.MFloatVector(list(first_vert.points[0] - center)[:3])
-            r = (r1 ^ vec).normalize()
-            s = (r ^ vec).normalize()
+            r1 = api.MFloatVector(comp.points[control_vert_index] - center)
+            r = (r1 ^ plane_unit_vector).normalize()
+            s = (r ^ plane_unit_vector).normalize()
 
-            # Create circle
+            # Create circle and place points in a list, verts might actually not
+            # represent the correct translation yet.
             points = []
-            theta = (math.pi*2) / len(circle_indices)
-            for i, p in enumerate(verts):
+            theta = (math.pi*2) / len(ordered_verts)
+            for i, p in enumerate(ordered_verts):
                 angle = theta*i
                 x = center.x + radius * (math.sin(angle)*r.x + math.cos(angle)*s.x)
                 y = center.y + radius * (math.sin(angle)*r.y + math.cos(angle)*s.y)
                 z = center.z + radius * (math.sin(angle)*r.z + math.cos(angle)*s.z)
+
                 points.append(api.MPoint(x, y, z))
 
-        for v in verts:
-            point = v.points[0]
+            # Finally move the points, find the closest vert to result and move
+            # that vert there.
+            for v in ordered_verts:
+                point = v.bbox.center
 
-            d = {point.distanceTo(p): p for p in points}
-            result = d[min(d.iterkeys())]
+                d = {point.distanceTo(p): p for p in points}
+                result = d[min(d.iterkeys())]
 
-            v.translate(translation=list(result)[:3], ws=True, absolute=True)
-            points.remove(result)
+                v.translate(translation=list(result)[:3], ws=True, absolute=True)
+                points.remove(result)
 
-    def get_dpsum(vert_row, average_vec):
-        rotated_vec = api.MEulerRotation(average_vec).asMatrix()
 
-        dpsum = 0
-        first_vert = None
-        greatest_dpsum = -999999999.999999999
-        vert_deque = collections.deque(vert_row)
-        for x in xrange(len(vert_deque)):
-            vert_deque.append(vert_deque[0])
+_face_weighted_name = 'face_weighted'
+def get_face_weighted_set_name(input_string):
+    return '{}_{}'.format(_face_weighted_name, input_string)
 
-            dpsum = 0
-            dtheta = math.radians(360 / len(vert_deque))
-            theta = 0
-            for i, vert in enumerate(vert_deque):
-                theta = math.radians((360 / (len(vert_deque) - 1)) * i)
 
-                angle_matrix = api.MMatrix((
-                    [math.cos(theta), -math.sin(theta), 0, 0],
-                    [math.sin(theta), math.cos(theta), 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1],
-                ))
-                rot_vec = angle_matrix * (api.MVector(vert.points[0] * rotated_vec))
-                dpsum += api.MVector(vert.points[0]) * rot_vec
-                theta += dtheta
+def set_face_weighted_normals_sets(add=True):
+    faces = mampy.complist()
+    for face in faces:
+        name = face.mdag.transform.short_name
+        set_name = get_face_weighted_set_name(name)
 
-            print 'dpsum', dpsum
-            if dpsum > greatest_dpsum:
-                first_vert, greatest_dpsum = vert_deque[0], dpsum
+        try:
+            result = bool(cmds.sets(set_name, q=True))
+        except ValueError:
+            result = False
 
-            vert_deque.pop()
-            vert_deque.rotate(1)
-        return first_vert
+        if result:
+            if add:
+                cmds.sets(face.cmdslist(), addElement=set_name)
+            else:
+                cmds.sets(face.cmdslist(), remove=set_name)
+        else:
+            cmds.sets(name=set_name)
+
+
+def display_face_weighted_normals_sets():
+    # Change material on face weighted faces.
+    pass
+
+
+def set_face_weighted_normals():
+    """
+    """
+    sets = cmds.ls('face_weighted*')
+    selected, to_weight = mampy.daglist(), ComponentList()
+    if selected:
+        for each in selected:
+            set_name = get_face_weighted_set_name(each.transform.short_name)
+            if set_name in sets:
+                to_weight.extend(mampy.complist(cmds.sets(set_name, q=True)))
+    else:
+        for set_name in sets:
+            try:
+                to_weight.extend(mampy.complist(cmds.sets(set_name, q=True)))
+            except ValueError:
+                continue
+
+    if not to_weight:
+        raise ObjecetDoesNotExist()
+
+    for each in to_weight:
+        for connected in each.get_connected_components():
+            shared_vert_map = collections.defaultdict(list)
+
+            for idx in connected.indices:
+                for vert_index in each.vertices[idx]:
+                    shared_vert_map[vert_index].append(idx)
+
+            for vert, shared in shared_vert_map.iteritems():
+                averaged = get_average_vert_normal(each.normals, shared)
+                each.mesh.setVertexNormal(averaged, vert)
 
 
 if __name__ == '__main__':
-    spin_edge()
-
-    # faces = mampy.ComponentList(cmds.sets('face_weighted_set', q=True))
-    # dag_name = str(iter(faces).next().dagpath)
-    # set_name = 'face_weighted_{}'.format(dag_name.replace('|', '_'))
-    # # print set_name
-
-    # face_weighted_name = 'face_weighted'
-    # def modify_set(add=True):
-    #     faces = mampy.dagp_ls()
-    #     for face in faces:
-    #         dag_name = str(face).replace('|', '_')
-    #         set_name = '{}_{}'.format(face_weighted_name, dag_name)
-
-    #         try:
-    #             result = bool(cmds.sets(set_name, q=True))
-    #         except ValueError:
-    #             result = False
-    #         print result
-
-    #         if result:
-    #             cmds.sets(cmds.ls(sl=True), addElement=set_name)
-    #         else:
-    #             cmds.sets(n=set_name)
-
-    # def set_face_weighted_normals():
-
-    #     faces = mampy.ComponentList()
-    #     for set in cmds.ls('face_weighted*'):
-    #         try:
-    #             tmp = mampy.ComponentList(cmds.sets(set, q=True))
-    #             faces.extend(tmp)
-    #         except ValueError:
-    #             continue
-
-    #     for face in faces:
-    #         for connected in face.get_connected():
-    #             shared_vert_map = collections.defaultdict(list)
-
-    #             for i in face.indices:
-    #                 for pv in face.mesh.getPolygonVertices(i):
-    #                     shared_vert_map[pv].append(i)
-
-    #             for vert, shared in shared_vert_map.iteritems():
-    #                 vec = api.MVector()
-    #                 for idx in shared:
-    #                     vec += face.mesh.getPolygonNormal(idx)
-    #                 vec = vec / len(shared)
-    #                 face.mesh.setVertexNormal(vec, vert)
-
-    # # modify_set()
-    # set_face_weighted_normals()
-
+    pass
