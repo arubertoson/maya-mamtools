@@ -246,7 +246,6 @@ def draw_circle():
             for i in comp.points:
                 center += i
             center /= len(comp.points)
-            return
 
             # iterate over the selection and try to find the selected control point.
             control_vert_index = get_control_vert()
