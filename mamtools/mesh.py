@@ -329,7 +329,6 @@ def get_face_weighted_sets():
 
 
 def display_face_weighted_normals_sets():
-    # TODO: Change material on face weighted faces.
     cmds.select(get_face_weighted_sets().cmdslist())
 
 
