@@ -11,6 +11,7 @@ import maya.api.OpenMaya as api
 
 import mampy
 from mampy.utils import undoable, repeatable, get_outliner_index
+from mampy.core.datatypes import BoundingBox
 from mampy.core.dagnodes import Node
 from mampy.core.components import MeshPolygon, MeshVert, get_vert_order_from_connected_edges
 from mampy.core.selectionlist import ComponentList
@@ -350,6 +351,28 @@ def set_face_weighted_normals():
             for vert, shared in shared_vert_map.iteritems():
                 averaged = get_average_vert_normal(each.normals, shared)
                 each.mesh.setVertexNormal(averaged, vert)
+
+
+def set_vertex_normals_on_selected_from_vector(vector):
+    for component in mampy.complist():
+        if not component.is_vert():
+            component = component.to_vert()
+        for index in component:
+            normal = (component.points[index] - vector).normalize()
+            component.mesh.setVertexNormal(normal, index, space=api.MSpace.kWorld)
+
+
+def vertex_normals_from_origo():
+    set_vertex_normals_on_selected_from_vector(api.MPoint(api.MPoint.kOrigin))
+
+
+def vertex_normals_from_selection_center():
+    bbox = BoundingBox()
+    for component in mampy.complist():
+        if not component.is_vert():
+            component = component.to_vert()
+        bbox.expand(component.bbox)
+    set_vertex_normals_on_selected_from_vector(bbox.center)
 
 
 if __name__ == '__main__':
