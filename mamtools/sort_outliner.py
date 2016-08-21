@@ -23,7 +23,7 @@ OutlinerItem = collections.namedtuple('OutlinerItem', 'name type')
 
 
 def get_object_map():
-    s = mampy.ls(assemblies=True)
+    s = mampy.daglist(assemblies=True)
     objects = collections.defaultdict(list)
     for obj in s.iterdags():
         shape = obj.get_shape()
