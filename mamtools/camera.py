@@ -61,7 +61,6 @@ def fit_selection(fit_type='selected'):
     fit_view_history.push(cam_attr)
 
 
-
 def get_active_axis_from_view_vector(view_vector):
     axes = [
         ('x', (1, 0, 0)),
