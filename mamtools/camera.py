@@ -61,32 +61,47 @@ def fit_selection(fit_type='selected'):
     fit_view_history.push(cam_attr)
 
 
+
+def get_active_axis_from_view_vector(view_vector):
+    axes = [
+        ('x', (1, 0, 0)),
+        ('y', (0, 1, 0)),
+        ('z', (0, 0, 1)),
+        ('x', (-1, 0, 0)),
+        ('y', (0, -1, 0)),
+        ('z', (0, 0, -1)),
+    ]
+    dots = {}
+    for axis, world_vector in axes:
+        dot = view_vector * api.MVector(world_vector)
+        if axis not in dots or (axis in dots and dot > dots[axis]):
+            dots[axis] = dot
+    return max(dots, key=dots.get)
+
+
 def viewport_snap():
     view = mvp.Viewport.active()
     camera = Camera(view.camera)
+
+    view_vector = camera.get_view_direction()
+    axis = get_active_axis_from_view_vector(view_vector)
+
     if camera.is_ortho():
         camera.attr['orthographic'] = False
+        translate_axis = 'translate{}'.format(axis.upper())
+        # Match values for smooth transition.
+        current_value = camera.transform.attr[translate_axis]
+        if current_value > 0:
+            value = camera.attr['orthographicWidth']
+        else:
+            value = -camera.attr['orthographicWidth']
+        camera.transform.attr[translate_axis] = value
+        camera.attr['centerOfInterest'] = abs(value)
     else:
-        view_vector = camera.get_view_direction()
         camera_center = camera.get_center_of_interest().z
         center_of_interest_approx = view_vector * camera_center
 
         # Find matching axis from world axes
-        axes = [
-            ('x', (1, 0, 0)),
-            ('y', (0, 1, 0)),
-            ('z', (0, 0, 1)),
-            ('x', (-1, 0, 0)),
-            ('y', (0, -1, 0)),
-            ('z', (0, 0, -1)),
-        ]
-        dots = {}
-        for axis, world_vector in axes:
-            dot = view_vector * api.MVector(world_vector)
-            if axis not in dots or (axis in dots and dot > dots[axis]):
-                dots[axis] = dot
-        axis = max(dots, key=dots.get)
-
         # Get necessary transforms
         cam_translate = camera.transform.get_translation()
         cam_rotate = camera.transform.get_rotate()
