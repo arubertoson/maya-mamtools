@@ -66,9 +66,9 @@ def get_active_axis_from_view_vector(view_vector):
         ('x', (1, 0, 0)),
         ('y', (0, 1, 0)),
         ('z', (0, 0, 1)),
-        ('x', (-1, 0, 0)),
-        ('y', (0, -1, 0)),
-        ('z', (0, 0, -1)),
+        ('-x', (-1, 0, 0)),
+        ('-y', (0, -1, 0)),
+        ('-z', (0, 0, -1)),
     ]
     dots = {}
     for axis, world_vector in axes:
@@ -79,25 +79,41 @@ def get_active_axis_from_view_vector(view_vector):
 
 
 def viewport_snap():
+    """
+    Smooth camera transition between perspective and orthographic.
+    """
     view = mvp.Viewport.active()
     camera = Camera(view.camera)
 
     view_vector = camera.get_view_direction()
     axis = get_active_axis_from_view_vector(view_vector)
+    negative = True
+    if len(axis) > 1:
+        negative = False
+        axis = axis[-1]
+
+    print 'negative', negative
 
     if camera.is_ortho():
         camera.attr['orthographic'] = False
         translate_axis = 'translate{}'.format(axis.upper())
+
         # Match values for smooth transition.
-        current_value = camera.transform.attr[translate_axis]
-        if current_value > 0:
-            value = camera.attr['orthographicWidth']
+        trans = camera.transform.attr[translate_axis]
+        value = camera.attr['orthographicWidth']
+        center_of_interrest = camera.attr['centerOfInterest']
+
+        if value > center_of_interrest:
+            change = value - camera.attr['centerOfInterest']
+            camera_move = (trans-change) if negative else (trans+change)
         else:
-            value = -camera.attr['orthographicWidth']
-        camera.transform.attr[translate_axis] = value
+            change = center_of_interrest - value
+            camera_move = (trans+change) if negative else (trans-change)
+
+        camera.transform.attr[translate_axis] = camera_move
         camera.attr['centerOfInterest'] = abs(value)
     else:
-        camera_center = camera.get_center_of_interest().z
+        camera_center = -camera.attr['centerOfInterest']
         center_of_interest_approx = view_vector * camera_center
 
         # Find matching axis from world axes
