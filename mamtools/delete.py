@@ -120,13 +120,16 @@ def merge_verts(move):
     """Merges verts to first selection."""
     ordered_selection = mampy.complist(os=True)
     if move or len(ordered_selection) == 2:
-        if not move:
-            v1, v2 = ordered_selection
-            pos = v1.bbox.expand(v2.bbox).center
+        if len(next(iter(ordered_selection))) > 1:
+            pass
         else:
-            pos = ordered_selection.pop().bbox.center
-        cmds.xform(ordered_selection.cmdslist(), t=list(pos)[:3], ws=True)
-        cmds.polyMergeVertex(ordered_selection.cmdslist(), distance=0.001, ch=True)
+            if not move:
+                v1, v2 = ordered_selection
+                pos = v1.bbox.expand(v2.bbox).center
+            else:
+                pos = ordered_selection.pop().bbox.center
+            cmds.xform(ordered_selection.cmdslist(), t=list(pos)[:3], ws=True)
+    cmds.polyMergeVertex(ordered_selection.cmdslist(), distance=0.001, ch=True)
 
 
 @undoable()
@@ -168,4 +171,4 @@ def unbevel():
 
 
 if __name__ == '__main__':
-    pass
+    merge_verts(False)
