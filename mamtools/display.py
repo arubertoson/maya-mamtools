@@ -290,13 +290,33 @@ def view_script_editor(direction='bottom', floating=False):
         # Echo all commands toggle
         cmds.menuItem(
             label='Toggle Echo Commands',
+            checkBox=cmds.commandEcho(q=True, state=True),
             command=lambda c: cmds.commandEcho(
                 state=not(cmds.commandEcho(q=True, state=True))),
+        )
+        # Toggle Stack Trace
+        cmds.menuItem(
+            label='Toggle Stack Trace',
+            checkBox=cmds.cmdScrollFieldReporter(output_win, q=True, stackTrace=True),
+            command=lambda c: cmds.cmdScrollFieldReporter(
+                output_win,
+                e=True,
+                stackTrace=not(cmds.cmdScrollFieldReporter(output_win,
+                                                           q=True,
+                                                           stackTrace=True)))
         )
         # Go to python reference
         cmds.menuItem(
             label='Python Command Reference',
             command=lambda c: cmds.showHelp('DocsPythonCommands'),
+        )
+        # python api ref
+        cmds.menuItem(
+            label='Python API Reference',
+            command=lambda c: cmds.showHelp('http://help.autodesk.com/view'
+                                            '/MAYAUL/2016/ENU//?guid='
+                                            '__py_ref_index_html',
+                                            absolute=True)
         )
 
     def create_script_output():
