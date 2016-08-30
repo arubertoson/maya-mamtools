@@ -19,6 +19,7 @@ __license__ = "MIT"
 import traceback
 import maya
 from maya import cmds
+from maya import mel as mel_
 import mampy
 from mamtools import camera, delete, display, mesh, sort_outliner, pivots
 
@@ -27,7 +28,7 @@ import maya.OpenMaya as OpenMaya
 optionVar = mampy.optionVar()
 
 
-lasso_callback = None
+lasso_callbacks = set()
 
 
 def mel(command):
@@ -51,24 +52,38 @@ def translate_map(angle):
     sel.translate(r=True, pu=cen.u, pv=cen.v, angle=angle)
 
 
+def paint():
+    if cmds.ls(sl=True):
+        cmds.select(cl=True)
+    mel_.eval('dR_paintPress')
+
+
 def lasso():
     global lasso_callback
-    lasso_callback = OpenMaya.MEventMessage.addEventCallback("SelectionChanged", lasso_release)
+
     tool = 'MAM_LASSO'
     if not cmds.lassoContext(tool, q=True, exists=True):
         cmds.lassoContext(tool)
+
     cmds.setToolTo(tool)
+    for each in ['SelectionChanged', 'ToolChanged']:
+        lasso_callbacks.add(OpenMaya.MEventMessage.addEventCallback(each, lasso_release))
 
 
 def lasso_release(*args):
-    try:
-        OpenMaya.MEventMessage.removeCallback(lasso_callback)
-    except RuntimeError:
-        pass
+    for each in lasso_callbacks:
+        try:
+            OpenMaya.MEventMessage.removeCallback(each)
+        except RuntimeError:
+            pass
     cmds.setToolTo('selectSuperContext')
+    lasso_callbacks.clear()
 
 
+global_context = ''
 def dolly():
+    global global_context
+    global_context = cmds.currentCtx()
     tool = 'MAM_DOLLY'
     if not cmds.dollyCtx(tool, q=True, exists=True):
         cmds.dollyCtx(tool, ac=True, ld=True, cd=False, dtc=True)
@@ -76,6 +91,7 @@ def dolly():
 
 
 def dolly_release(*args):
+    global global_context
     # import maya.mel as mel
     # mel.eval('SelectToolOptionsMarkingMenu')
     cmds.setToolTo('selectSuperContext')
