@@ -319,11 +319,11 @@ def get_face_weighted_sets():
         for each in selected:
             set_name = get_face_weighted_set_name(each.transform.short_name)
             if set_name in sets:
-                to_weight.extend(mampy.complist(cmds.sets(set_name, q=True)))
+                to_weight.extend(mampy.complist(cmds.sets(set_name, q=True) or []))
     else:
         for set_name in sets:
             try:
-                to_weight.extend(mampy.complist(cmds.sets(set_name, q=True)))
+                to_weight.extend(mampy.complist(cmds.sets(set_name, q=True) or []))
             except ValueError:
                 continue
     return to_weight
